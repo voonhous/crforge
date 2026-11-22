@@ -813,6 +813,59 @@ The action count is `schema.actions` (the metadata's `actions`), the first abili
 - The id rule is not checked either: `vector.id_version` (the metadata's `id_version`, None for a synthetic vector) names it.
 - The mask rule is not checked: `vector.mask_version` (the metadata's `mask_version`, None for a synthetic vector) names it, and `LadderConfig(mask_version=1)` gives the rule of every tile. A model saved under one rule passes the check of a vector of the other, to be played or trained on under it.
 
+### The field registry and adapters
+
+The field export holds one block of `ints` 32-bit integers per environment (a numpy array of shape `(count, ints)`, int32), and the field registry names every field in it. `crforge_env.fields.Registry` reads the registry from the metadata (`Registry.from_metadata(vector.metadata["fields"])`) or from a saved copy of that node (`Registry.from_file(path)`, the snapshot `python/tests/data/fields_v1.json` for one). It gives `version`, `ints`, `entity_capacity`, `enums` (per enum or flags name, the labels by integer code or bit index) and `fields`, each a `Field` (`name`, `offset`, `shape`, `tag`, `units`, `frame`, `alias_of`, `v4`, and `size`, the integers it takes, 0 for an alias), in registry order; `registry.field(name)` gives one and raises `KeyError` for a name it lacks.
+
+The registry is checked as it is read, and a registry that fails raises `ValueError` naming the field: no two fields share an integer and every field lies inside the block; each tag is `public`, `seat` or `hidden`; a seat field's first axis is the seat (2); an `enum:<name>` or `flags:<name>` unit names an enum the registry has; an alias names a stored seat field of the same shape and offset, and is itself tagged `hidden`.
+
+`registry.check("1.0")` states the version a reader needs: it raises `RegistryVersionError` (a `ValueError`) unless the registry has the same major version and at least that minor version. Adding a field moves the minor version, so a reader of 1.0 still reads 1.1; renaming or removing a field, or changing its meaning, moves the major version.
+
+The tags make the honest choice the default:
+
+- `public` fields are shown to both seats (the battle clock);
+- `seat` fields are what a seat is shown, first axis the seat, coordinates in that seat's frame. A plain name (`entity.hp`, `enemy.elixir`) is always what the seat sees: the enemy's elixir as the seat counts it, an enemy's hit points only where the screen draws its health bar;
+- `hidden` fields are what a seat is not shown, or not in full. A true value has a name of its own, the seat field's name with `.true` after it (`entity.hp.true`, `enemy.elixir.true`), so it is never read by accident.
+
+An alias holds no integers: `enemy.elixir.true` is `own.elixir` read at the other seat, and its view is `own.elixir`'s with the seat axis flipped.
+
+`registry.views(block)` gives every field as a view of the block, shape `(count, *shape)`. Nothing is copied: views made once follow a block refreshed in place each step. The block must be a C-contiguous int32 array in the machine's byte order, of shape `(count, ints)`; anything else raises `ValueError`. `registry.view(block, names)` gives a `FieldView` of the named fields only: a read-only mapping whose arrays cannot be written, and where any other name, even one the registry has, raises `UndeclaredFieldError` (a `KeyError`) saying the field was not declared.
+
+An adapter (`crforge_env.adapters.Adapter`) builds a model's inputs from declared fields. It sets `name`, `registry_version`, `reads` (the fields it reads) and `outputs` (per output, the shape and dtype of one environment's array), and implements `observe(fields, seat)`, which gets a `FieldView` of its reads and returns one array per output, `(count, *shape)`, vectorised over the environments. `bind(registry)` checks the version and that every read exists (a `ValueError` names the missing ones), and `hidden_fields` lists the reads tagged `hidden` (`hidden` is true when there is any). `reset(done, seat)` lets an adapter with state forget the environments that ended; it does nothing by default. `adapter.view(block)` is `registry.view(block, adapter.reads)`.
+
+```python
+import numpy as np
+from crforge_env.adapters import Adapter, provenance, require_fair
+from crforge_env.fields import Registry
+
+class ElixirLead(Adapter):
+    name = "elixir_lead"
+    registry_version = "1.0"
+    reads = ("own.elixir", "enemy.elixir")  # both what the seat is shown
+    outputs = {"lead": ((), np.dtype(np.int32))}
+
+    def observe(self, fields, seat):
+        return {"lead": fields["own.elixir"][:, seat] - fields["enemy.elixir"][:, seat]}
+
+registry = Registry.from_metadata(vector.metadata["fields"])
+lead = ElixirLead()
+lead.bind(registry)
+require_fair(lead)  # raises HiddenFieldError if it read enemy.elixir.true
+out = lead.observe(lead.view(block), seat=0)["lead"]  # (count,)
+```
+
+`require_fair(*adapters)` raises `HiddenFieldError` (a `ValueError`) naming every adapter that reads a hidden field and the fields it reads, for a model that must play only on what its seat is shown. An adapter that reads hidden fields is still allowed elsewhere, a teacher or an analysis, say; the check is where fair play is required.
+
+`provenance(roles, registry)` records which fields each role of a run read, as data ready for JSON, to keep with the run and its checkpoints:
+
+```python
+provenance({"learner": [lead]}, registry)
+# {"registry": "1.0", "roles": {"learner": {"adapters": ["elixir_lead"],
+#   "reads": ["enemy.elixir", "own.elixir"], "hidden": False, "hidden_fields": []}}}
+```
+
+The roles and every role's reads and hidden fields are sorted, so the same adapters give the same record; a role's adapters stay in the order given.
+
 ### The wrappers
 
 Two wrappers over a vector of one battle, both with autoreset off:
