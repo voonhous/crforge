@@ -17,6 +17,11 @@ the seat axis flipped.
 follow a block the vector refreshes in place. :meth:`Registry.view` gives a :class:`FieldView` of
 a declared set of fields only, read-only, which is what an adapter is handed.
 
+Since version 1.1 the registry also holds static facts of the data version per vocabulary row
+(:attr:`Registry.rows`, the node's ``rows``): one integer per vocabulary id as ``entity.row``
+names a row, the same for every step and battle on the tables, and no field of a step. A node
+without a vocabulary (the synthetic engine's, the snapshot) lists each fact with no values.
+
 The version is ``major.minor``: adding a field moves the minor version; renaming or removing one,
 or changing its meaning, moves the major version. A reader states the version it needs
 (:meth:`Registry.check`) and refuses another major version or an older minor one.
@@ -116,6 +121,11 @@ class Registry:
     """Per ``enum:<name>`` or ``flags:<name>`` unit: code value (or bit index) to label."""
     fields: dict[str, Field]
     """Every field by name, in registry order."""
+    rows: dict[str, np.ndarray]
+    """Per row fact (since 1.1), read-only int32 values, one per vocabulary id; an empty array for
+    a node without a vocabulary, and no facts at all in a 1.0 node."""
+    row_units: dict[str, str]
+    """Per row fact, its units (``ms``, ``enum:bar_rule``, ...)."""
 
     def __init__(
         self,
@@ -124,6 +134,7 @@ class Registry:
         entity_capacity: int,
         enums: Mapping[str, Mapping[int, str]],
         fields: Iterable[Field],
+        rows: Mapping[str, Mapping[str, Any]] | None = None,
     ) -> None:
         _parse_version(version, "the field registry's version")
         self.version = version
@@ -135,6 +146,12 @@ class Registry:
             if f.name in self.fields:
                 raise ValueError(f"the field registry names {f.name!r} twice")
             self.fields[f.name] = f
+        self.rows, self.row_units = {}, {}
+        for name, entry in (rows or {}).items():
+            values = np.asarray(entry["values"], dtype=np.int32).reshape(-1)
+            values.flags.writeable = False
+            self.rows[name] = values
+            self.row_units[name] = entry["units"]
         self._validate()
 
     @classmethod
@@ -149,6 +166,7 @@ class Registry:
                 for name, labels in node["enums"].items()
             },
             fields=(Field.from_node(item) for item in node["fields"]),
+            rows=node.get("rows"),
         )
 
     @classmethod
@@ -184,6 +202,15 @@ class Registry:
                 stored.append(f)
             else:
                 self._validate_alias(f)
+        for name, units in self.row_units.items():
+            kind, _, enum = units.partition(":")
+            if kind in ("enum", "flags") and enum not in self.enums:
+                raise ValueError(f"row fact {name!r} has units {units!r}, but no enum {enum!r}")
+        lengths = {len(values) for values in self.rows.values() if len(values)}
+        if len(lengths) > 1:
+            raise ValueError(
+                f"the row facts hold {sorted(lengths)} values: one per vocabulary row, all alike"
+            )
         stored.sort(key=lambda f: f.offset)
         for before, after in pairwise(stored):
             if after.offset < before.offset + before.size:

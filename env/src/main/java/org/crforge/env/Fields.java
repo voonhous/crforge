@@ -1126,7 +1126,8 @@ public final class Fields {
    * <ol>
    *   <li>s = floor(b * p / 100), the attack time a tick adds. With H = 0, s below 1 (a stun or a
    *       freeze, p = 0) or b = -1 there is no next hit to count.
-   *   <li>A unit whose flags hold {@code charged}: n = 1.
+   *   <li>A unit whose flags hold {@code charged} with A = 0: n = 1. The flag is still set on the
+   *       tick of the charge's hit, when A already holds H, and the next step counts that tick.
    *   <li>A above 0, an attack under way: n = ceil(((floor(A / H) + 1) * H - A) / s).
    *   <li>A = 0, the next attack starts from its load. k = ceil(D / 50) when {@code entity.state}
    *       is not {@code attacking}, else 0: the ticks the start delay holds the timer. The load
