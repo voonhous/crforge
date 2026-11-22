@@ -21,7 +21,7 @@ The battle core holds no code of the environment. The environment reads the obse
 ```
 env/                     org.crforge.env
   Schema                 the flat layout: header, entity rows, mask, action codec, seat frames, codes, state names, scales (version 4)
-  Fields                 the field registry: every exported field's name, place, shape, tag (public, seat, hidden), units and frame (version 1.0)
+  Fields                 the field registry: every exported field's name, place, shape, tag (public, seat, hidden), units and frame, and the static facts per vocabulary row (version 1.1)
   FieldExport            writes a Ladder environment's block of the field export beside its observations
   Vocabulary             every card, character, building, projectile and area effect row named by number, and the buffs in a list of their own
   SeatView               what a seat's player sees of the field's characters and towers, and their health bars: the one place that rule lives
@@ -455,7 +455,7 @@ The buffs an entity row names are numbered in a list of their own, `buff_names`:
 An id is stable within a data version only: a row another version adds moves every later id. So `VectorEnv.metadataJson()` (or `writeMetadata(path)`) is to be kept with every run and checkpoint. It holds:
 
 - the schema's version, sizes, field names, flag, refusal, fault and state names (`state_names`);
-- the field registry (`fields`, `org.crforge.env.Fields`), versioned apart from the schema: its `version` (major.minor), the block's size `ints`, the entity table's `entity_capacity`, `enums` and every field's `name`, `offset`, `shape`, `tag`, `units`, `frame`, `alias_of` and `v4`, as [The field registry and adapters](#the-field-registry-and-adapters) gives them. It is published whether the vector exports its fields or not; its committed snapshot is `python/tests/data/fields_v1.json`, so any change of it shows in review;
+- the field registry (`fields`, `org.crforge.env.Fields`), versioned apart from the schema: its `version` (major.minor), the block's size `ints`, the entity table's `entity_capacity`, `enums`, the static facts per vocabulary row (`rows`, [The row facts](#the-row-facts)) and every field's `name`, `offset`, `shape`, `tag`, `units`, `frame`, `alias_of` and `v4`, as [The field registry and adapters](#the-field-registry-and-adapters) gives them. It is published whether the vector exports its fields or not; its committed snapshot is `python/tests/data/fields_v1.json`, so any change of it shows in review, and `python/tests/data/fields_v1_0.json` keeps version 1.0's, which every 1.x registry holds unchanged;
 - the scales (`scales`);
 - the configuration;
 - the vocabulary keyed by name (`names`, the name of each id) with the tables' `data_version`, `content_sha` and a `hash` of the list;
@@ -828,7 +828,7 @@ The field export holds one block of `ints` 32-bit integers per environment (a nu
 
 The registry is checked as it is read, and a registry that fails raises `ValueError` naming the field: no two fields share an integer and every field lies inside the block; each tag is `public`, `seat` or `hidden`; a seat field's first axis is the seat (2); an `enum:<name>` or `flags:<name>` unit names an enum the registry has; an alias names a stored seat field of the same shape and offset, and is itself tagged `hidden`.
 
-`registry.check("1.0")` states the version a reader needs: it raises `RegistryVersionError` (a `ValueError`) unless the registry has the same major version and at least that minor version. Adding a field moves the minor version, so a reader of 1.0 still reads 1.1; renaming or removing a field, or changing its meaning, moves the major version.
+`registry.check("1.0")` states the version a reader needs: it raises `RegistryVersionError` (a `ValueError`) unless the registry has the same major version and at least that minor version. Adding a field moves the minor version, so a reader of 1.0 still reads 1.1; renaming or removing a field, or changing its meaning, moves the major version. A field added in a minor version takes integers after every field of the versions before it, so their offsets hold, and the registry's list keeps the older fields first, in their order. Version 1.1 (2026-11-22) added the seat's own last plays and the row facts; every 1.0 field kept its name, offset, shape, units and frame.
 
 The tags make the honest choice the default:
 
@@ -873,11 +873,39 @@ out = lead.observe(lead.view(vector.fields), seat=0)["lead"]  # (count,)
 
 ```python
 provenance({"learner": [lead]}, registry)
-# {"registry": "1.0", "roles": {"learner": {"adapters": ["elixir_lead"],
+# {"registry": "1.1", "roles": {"learner": {"adapters": ["elixir_lead"],
 #   "reads": ["enemy.elixir", "own.elixir"], "hidden": False, "hidden_fields": []}}}
 ```
 
 The roles and every role's reads and hidden fields are sorted, so the same adapters give the same record; a role's adapters stay in the order given.
+
+### The own plays and the row facts
+
+`own.plays.*` and `own.plays.count` (seat fields, since 1.1) are the seat's own last plays, the same rows, columns, units and frames as `enemy.plays.*` and `enemy.plays.count`: newest first, 8 rows, the point in the seat's frame. A seat sees all of its own plays, so each row holds the play from its run (card, cast, form, the placed point, `point_ticks` from the run) and has no `.true` counterpart; its flags hold `card_shown` and `point_shown` always, `mirror` for a Mirror's play, and `evolution_diamond` from the tick the other seat is shown the diamond. Past the plays the card and cast are -1 and every other column 0, as the enemy's rows. They are no part of the v4 observation. A test holds them to the battle's play records, to the other seat's hidden `enemy.plays.*.true` in full, and to the other seat's `enemy.plays.*` for every column it is shown, the frames turned.
+
+#### The row facts
+
+The metadata's `fields.rows` holds static facts of the data version, one integer per vocabulary id as `entity.row` names a row, per fact `{"units": ..., "values": [...]}`. They are read from the tables the environment loads, the rows as the battle core loads them, the same for every step and battle on those tables; a metadata without a vocabulary (the synthetic engine's, the snapshot) lists each fact with no values. A row of neither the characters nor the buildings table has the bar rule `not_unit` and every other fact 0; a character or building row the battle core refuses to load (no unit of a battle can be of it) has every attack fact -1.
+
+| Fact | Units | Value |
+|---|---|---|
+| `bar_rule` | `enum:bar_rule` | when an enemy unit of the row shows its health bar: `never`, `always`, `damaged` (from its first damage on, for its life) or `damaged_rolling` (as `damaged`, hidden while it runs an action that hides the bar while it rolls, as the Barb Log hero's roll) |
+| `hit_speed_ms` | ms | the row's HitSpeed, H; 0 for a row that does not attack |
+| `load_time_ms` | ms | the row's LoadTime, T |
+| `attack_step_ms` | ms | b, the attack time a tick adds at 100 percent hit speed: half the hit speed multiplier of the row's attack sequence step, 50 without one; -1 when the row's steps differ |
+| `attack_start_delay_ms` | ms | D, the time an attack that starts from another state is held at 0, 0 for most rows; -1 when the steps differ |
+| `attack_traits` | `flags:attack_traits` | `load_first_hit` (the timer restarts from 0 and the load from T after each hit; never a crown tower), `charge` (a charged unit, flag `charged`, hits on its first attack tick), `dash`, `special` |
+
+Where `entity.hp` is -1 on a character row, its hit points are known in one case: the bar rule is `damaged`, the row is not a trail (`entity.row` not -1) and the flags do not hold `underground`. The unit is undamaged, so its hit points are `entity.max_hp` exactly (its shield is its starting shield, which no fact gives). They are not known for the rule `never`, for `damaged_rolling` (undamaged, or rolling: the roll hides the bar whatever the damage) or for a unit underground (the screen shows no bar of it; an enemy ground unit travelling underground is its trail, its row, maximum hit points and level -1).
+
+The time until a unit can attack next, from A = `entity.attack_ms`, L = `entity.load_ms` and p = `entity.hit_speed_percent`. Each tick (50 ms) its targeting runs (not while it deploys) the unit's targeting first takes 50 off the load countdown, to no less than 0, whatever its buffs; then, on a tick it attacks, the attack time advances, and the next hit fires on the tick it crosses a multiple of H. If the unit attacks on every tick from the next one on, the ticks n until that tick are:
+
+1. s = floor(b * p / 100), the attack time a tick adds; with H = 0, s below 1 (a stun or a freeze) or b = -1 there is no next hit to count.
+2. Flag `charged`: n = 1.
+3. A above 0: n = ceil(((floor(A / H) + 1) * H - A) / s).
+4. A = 0: k = ceil(D / 50) when `entity.state` is not `attacking`, else 0, and Lc = max(L - 50 * (k + 1), 0). For T at most H, n = k + max(1, ceil((H - T + Lc) / s)); for T above H, with j = max(k + 1, ceil((L - H) / 50)), n = j - 1 + ceil(H / s).
+
+The time is 50 * n ms. It is exact while the unit keeps a target in range, nothing resets its timers (taking a new target or losing one may) and its hit speed percent stays, but for three limits: under a speed-up and a slow-down at once the battle scales the step twice and s may be 1 ms off; a row with `dash` or `special` attacks otherwise in its dash or special range; an action that makes a hit land at once is not shown. A unit still deploying does not attack yet, nor run its load countdown; one underground does not attack yet, its countdown running; a king tower attacks only once awake, and once the match is over every attack timer is held at 0. `org.crforge.env.Fields.rowFacts()` documents the facts and the formula in full.
 
 ### The v4 adapter
 

@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.replay.Scenarios;
 import org.crforge.core.battle.unit.CharacterEntity;
+import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.env.Fields.Field;
 import org.crforge.env.Fields.Tag;
@@ -260,7 +262,124 @@ class FieldExportTest {
         checkRow(ladder, block, obs[seat], seat, k, listed[seat][k]);
       }
       checkPlays(block, obs[seat], seat);
+      checkOwnPlays(ladder, block, obs, seat);
     }
+  }
+
+  /** The play columns of {@code enemy.plays.*} and {@code own.plays.*}, in v4's order. */
+  private static final List<String> PLAY_COLUMNS =
+      List.of("card", "cast", "form", "ticks", "x", "y", "kind", "flags", "point_ticks");
+
+  /** A seat's {@code own.plays.<column>} at a row, newest first. */
+  private static int own(int[] block, String column, int seat, int r) {
+    return block[Fields.field("own.plays." + column).offset() + seat * Schema.ENEMY_PLAY_ROWS + r];
+  }
+
+  /**
+   * Holds a seat's own plays to the battle's play records and to what the other seat is shown of
+   * them in its {@code enemy.plays}, with the frames handled: the same rows, and every column the
+   * other seat is shown equal; the card, the cast and the point in full, shown to it or not.
+   */
+  private static void checkOwnPlays(LadderEnv ladder, int[] block, int[][] obs, int seat) {
+    int rows = Schema.ENEMY_PLAY_ROWS;
+    int[] enemy = obs[1 - seat];
+    assertThat(block[Fields.field("own.plays.count").offset() + seat])
+        .as("own.plays.count of seat %d", seat)
+        .isEqualTo(enemy[Schema.H_ENEMY_PLAY_COUNT]);
+    // The battle's own records of the seat's plays placed, newest first.
+    List<Standard1v1Battle.Play> placed = new ArrayList<>();
+    for (Standard1v1Battle.Play play : ladder.battle().getPlays()) {
+      if (play.side() == seat
+          && play.result() != null
+          && play.result().placed()
+          && (play.mirror() != null || play.variant() != null || play.evolution() != null)) {
+        placed.add(0, play);
+      }
+    }
+    int tick = ladder.battle().getBattle().getTick();
+    int plays = Math.min(enemy[Schema.H_ENEMY_PLAY_COUNT], rows);
+    for (int r = 0; r < rows; r++) {
+      int at = Schema.H_ENEMY_PLAYS + r * Schema.ENEMY_PLAY_INTS;
+      String row = "seat " + seat + " own play " + r;
+      int flags = enemy[at + 7];
+      if (r >= plays) {
+        // Past the plays, as the enemy's rows are.
+        for (int c = 0; c < PLAY_COLUMNS.size(); c++) {
+          assertThat(own(block, PLAY_COLUMNS.get(c), seat, r))
+              .as("%s %s", row, PLAY_COLUMNS.get(c))
+              .isEqualTo(enemy[at + c]);
+        }
+        continue;
+      }
+      // In full: the truth the other seat's hidden fields hold, the point in the seat's frame.
+      int t = (1 - seat) * rows + r;
+      assertThat(own(block, "card", seat, r))
+          .as(row)
+          .isEqualTo(block[Fields.ENEMY_PLAYS_CARD_TRUE.offset() + t]);
+      assertThat(own(block, "cast", seat, r))
+          .as(row)
+          .isEqualTo(block[Fields.ENEMY_PLAYS_CAST_TRUE.offset() + t]);
+      assertThat(own(block, "form", seat, r))
+          .as(row)
+          .isEqualTo(block[Fields.ENEMY_PLAYS_FORM_TRUE.offset() + t]);
+      int x = own(block, "x", seat, r);
+      int y = own(block, "y", seat, r);
+      assertThat(x)
+          .as(row)
+          .isEqualTo(Schema.toSeatX(seat, block[Fields.ENEMY_PLAYS_X_TRUE.offset() + t]));
+      assertThat(y)
+          .as(row)
+          .isEqualTo(Schema.toSeatY(seat, block[Fields.ENEMY_PLAYS_Y_TRUE.offset() + t]));
+      // The battle's record of the play: its run tick and its placed point.
+      if (r < placed.size()) {
+        Standard1v1Battle.Play play = placed.get(r);
+        assertThat(own(block, "ticks", seat, r)).as(row).isEqualTo(tick - play.tick());
+        assertThat(x).as(row).isEqualTo(Schema.toSeatX(seat, play.result().x()));
+        assertThat(y).as(row).isEqualTo(Schema.toSeatY(seat, play.result().y()));
+        assertThat(own(block, "card", seat, r))
+            .as(row)
+            .isEqualTo(
+                VectorEnv.vocabulary(tables)
+                    .id(ladder.battle().getMatch().side(seat).deck().get(index(play)).name()));
+      }
+      // The columns every play shows at once to both.
+      assertThat(own(block, "ticks", seat, r)).as(row).isEqualTo(enemy[at + 3]);
+      assertThat(own(block, "kind", seat, r)).as(row).isEqualTo(enemy[at + 6]);
+      // The seat sees its card and its point from the run.
+      int ownFlags = own(block, "flags", seat, r);
+      assertThat(ownFlags & Schema.PLAY_CARD_SHOWN).as(row).isNotZero();
+      assertThat(ownFlags & Schema.PLAY_POINT_SHOWN).as(row).isNotZero();
+      assertThat(own(block, "point_ticks", seat, r)).as(row).isEqualTo(enemy[at + 3]);
+      assertThat(ownFlags & Schema.PLAY_EVOLUTION_DIAMOND)
+          .as(row)
+          .isEqualTo(flags & Schema.PLAY_EVOLUTION_DIAMOND);
+      if ((flags & Schema.PLAY_CARD_SHOWN) != 0) {
+        // What the other seat was shown of the card is the seat's own.
+        for (int c = 0; c < 3; c++) {
+          assertThat(own(block, PLAY_COLUMNS.get(c), seat, r))
+              .as("%s %s", row, PLAY_COLUMNS.get(c))
+              .isEqualTo(enemy[at + c]);
+        }
+        assertThat(ownFlags & Schema.PLAY_MIRROR).as(row).isEqualTo(flags & Schema.PLAY_MIRROR);
+      }
+      if ((flags & Schema.PLAY_POINT_SHOWN) != 0 && enemy[at + 6] != Schema.PLAY_TUNNEL) {
+        // The point the other seat was shown, in its frame, is the seat's in its own.
+        assertThat(x)
+            .as(row)
+            .isEqualTo(Schema.toSeatX(seat, Schema.toSeatX(1 - seat, enemy[at + 4])));
+        assertThat(y)
+            .as(row)
+            .isEqualTo(Schema.toSeatY(seat, Schema.toSeatY(1 - seat, enemy[at + 5])));
+      }
+    }
+  }
+
+  /** The deck index a placed play's item names. */
+  private static int index(Standard1v1Battle.Play play) {
+    if (play.mirror() != null) {
+      return play.mirror().index();
+    }
+    return play.variant() != null ? play.variant().index() : play.evolution().index();
   }
 
   private static int seatEntity(int[] block, Field field, int seat, int row) {
@@ -446,12 +565,14 @@ class FieldExportTest {
         SplittableRandom random = new SplittableRandom(pair);
         boolean trail = false;
         boolean hiddenBar = false;
+        boolean unshownPlay = false;
         // Past an episode's end: autoreset starts the next, its first export held as any.
         for (int step = 0; step < 3000; step++) {
           for (int i = 0; i < env.count(); i++) {
             check(env, i);
             trail |= pair == 0 && trailShown(env, i);
             hiddenBar |= pair == 0 && hiddenBarShown(env, i);
+            unshownPlay |= pair == 0 && unshownPlay(env, i);
           }
           drawActions(env, random);
           env.step();
@@ -459,6 +580,9 @@ class FieldExportTest {
         if (pair == 0) {
           assertThat(trail).as("a tunnelling unit shown as its trail").isTrue();
           assertThat(hiddenBar).as("an enemy unit whose health bar does not show").isTrue();
+          assertThat(unshownPlay)
+              .as("a seat's own play whose point the other seat is not shown yet")
+              .isTrue();
         }
       }
     }
@@ -472,6 +596,21 @@ class FieldExportTest {
         if (entity instanceof WorldEntity world
             && SeatView.sees(seat, world)
             && SeatView.trail(seat, world)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /** Whether a seat of an environment is shown an enemy play without its point now. */
+  private static boolean unshownPlay(VectorEnv env, int index) {
+    for (int seat = 0; seat < 2; seat++) {
+      int[] o = observation(env, index, seat);
+      int plays = Math.min(o[Schema.H_ENEMY_PLAY_COUNT], Schema.ENEMY_PLAY_ROWS);
+      for (int r = 0; r < plays; r++) {
+        if ((o[Schema.H_ENEMY_PLAYS + r * Schema.ENEMY_PLAY_INTS + 7] & Schema.PLAY_POINT_SHOWN)
+            == 0) {
           return true;
         }
       }

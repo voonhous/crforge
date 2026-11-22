@@ -89,10 +89,17 @@ import org.crforge.core.battle.unit.ChampionController;
  * {@code game} or {@code seat} (or {@code enemy_seat} for an alias) for a coordinate or a move in
  * game units, {@code none} for every other field.
  *
- * <p>The version. Adding a field moves the minor version; renaming or removing one, or moving its
- * meaning, moves the major version. A reader states the version it needs and refuses another major
- * version. The committed snapshot {@code python/tests/data/fields_v1.json} holds the registry's
- * metadata, so any change of it shows in review.
+ * <p>The row facts. Beside the fields, the registry publishes static facts of the data version per
+ * vocabulary row, the health bar rule and the attack timing of each character and building row
+ * ({@link #rowFacts()}, the metadata's {@code rows}), for an adapter to read the fields by.
+ *
+ * <p>The version. Adding a field or a row fact moves the minor version; renaming or removing one,
+ * or moving its meaning, moves the major version. A field added in a minor version takes integers
+ * after every field of the versions before it, so their offsets hold. A reader states the version
+ * it needs and refuses another major version. Version 1.1 added the seat's own last plays ({@code
+ * own.plays.*}) and the row facts. The committed snapshot {@code python/tests/data/fields_v1.json}
+ * holds the registry's metadata, so any change of it shows in review; {@code
+ * python/tests/data/fields_v1_0.json} holds version 1.0's, which every 1.x registry keeps.
  */
 public final class Fields {
 
@@ -101,7 +108,7 @@ public final class Fields {
   }
 
   /** The registry's version, major.minor, apart from the observation layout's {@link Schema}. */
-  public static final String VERSION = "1.0";
+  public static final String VERSION = "1.1";
 
   /** The rows of the exported entity table. */
   public static final int ENTITY_CAPACITY = 256;
@@ -111,6 +118,55 @@ public final class Fields {
 
   /** The seats a seat field's leading axis counts. */
   private static final int SEATS = 2;
+
+  // The row facts' codes ({@link #rowFacts()}).
+
+  /** {@code bar_rule}: a row that is no character or building row. */
+  public static final int BAR_NOT_UNIT = 0;
+
+  /** {@code bar_rule}: an enemy unit of the row never shows its health bar. */
+  public static final int BAR_NEVER = 1;
+
+  /** {@code bar_rule}: an enemy unit of the row always shows its health bar. */
+  public static final int BAR_ALWAYS = 2;
+
+  /** {@code bar_rule}: an enemy unit of the row shows its health bar from its first damage on. */
+  public static final int BAR_DAMAGED = 3;
+
+  /**
+   * {@code bar_rule}: as {@link #BAR_DAMAGED}, and the bar is hidden while the unit runs an action
+   * that hides it while it rolls.
+   */
+  public static final int BAR_DAMAGED_ROLLING = 4;
+
+  /** {@code attack_traits}: the row loads before its first hit and again after each hit. */
+  public static final int TRAIT_LOAD_FIRST_HIT = 1;
+
+  /** {@code attack_traits}: the row charges, and a charged unit hits on its first attack tick. */
+  public static final int TRAIT_CHARGE = 1 << 1;
+
+  /** {@code attack_traits}: the row dashes or jumps at its target. */
+  public static final int TRAIT_DASH = 1 << 2;
+
+  /** {@code attack_traits}: the row has a special attack with a load of its own. */
+  public static final int TRAIT_SPECIAL = 1 << 3;
+
+  /**
+   * A static fact of the data version, one integer per vocabulary row ({@link #rowFacts()}).
+   *
+   * @param name its name, as the metadata's {@code rows} keys it
+   * @param units its units, as a field's
+   */
+  public record RowFact(String name, String units) {}
+
+  private static final List<RowFact> ROW_FACTS =
+      List.of(
+          new RowFact("bar_rule", "enum:bar_rule"),
+          new RowFact("hit_speed_ms", "ms"),
+          new RowFact("load_time_ms", "ms"),
+          new RowFact("attack_step_ms", "ms"),
+          new RowFact("attack_start_delay_ms", "ms"),
+          new RowFact("attack_traits", "flags:attack_traits"));
 
   /** A field's visibility tag. */
   public enum Tag {
@@ -946,6 +1002,47 @@ public final class Fields {
   /** The enemy's actions refused as illegal in the episode so far. */
   public static final Field ENEMY_ILLEGAL_TRUE = alias(OWN_ILLEGAL);
 
+  // Version 1.1: the seat's own last plays, appended after the block of 1.0 so that every 1.0
+  // offset holds. They mirror the enemy's plays ({@code enemy.plays.*}): the same rows, columns,
+  // units and frames, the plays of the seat itself. A seat sees all of its own plays, so the
+  // columns hold the play from its run, and none has a {@code .true} counterpart or an alias.
+
+  /** The seat's plays placed so far in the episode, as {@code enemy.plays.count} counts them. */
+  public static final Field OWN_PLAYS_COUNT = seat("own.plays.count", "count", Frame.NONE, null);
+
+  /** Each of the seat's last plays' deck card, newest first, -1 past the plays. */
+  public static final Field OWN_PLAYS_CARD = ownPlays("card", "vocabulary id", Frame.NONE);
+
+  /** Each own play's row cast as, -1 past the plays. */
+  public static final Field OWN_PLAYS_CAST = ownPlays("cast", "vocabulary id", Frame.NONE);
+
+  /** Each own play's form; 0 past the plays. */
+  public static final Field OWN_PLAYS_FORM = ownPlays("form", "enum:form", Frame.NONE);
+
+  /** The ticks since each own play ran; 0 past the plays. */
+  public static final Field OWN_PLAYS_TICKS = ownPlays("ticks", "ticks", Frame.NONE);
+
+  /** The point across each own play was placed at, in the seat's frame; 0 past the plays. */
+  public static final Field OWN_PLAYS_X = ownPlays("x", "game units", Frame.SEAT);
+
+  /** The point along each own play was placed at, in the seat's frame; 0 past the plays. */
+  public static final Field OWN_PLAYS_Y = ownPlays("y", "game units", Frame.SEAT);
+
+  /** Each own play's kind, {@link Schema#PLAY_TROOP} to {@link Schema#PLAY_TUNNEL}; 0 past. */
+  public static final Field OWN_PLAYS_KIND = ownPlays("kind", "enum:play_kind", Frame.NONE);
+
+  /**
+   * Each own play's flags, the {@code PLAY_*} bits of {@link Schema}: {@link
+   * Schema#PLAY_CARD_SHOWN} and {@link Schema#PLAY_POINT_SHOWN} always, {@link Schema#PLAY_MIRROR}
+   * for a Mirror's play, and {@link Schema#PLAY_EVOLUTION_DIAMOND} from the tick the play's
+   * evolution cycle diamond shows, the same tick the other seat's {@code enemy.plays.flags} shows
+   * it; 0 past the plays.
+   */
+  public static final Field OWN_PLAYS_FLAGS = ownPlays("flags", "flags:play", Frame.NONE);
+
+  /** The ticks since each own play's point was known: since its run; 0 past the plays. */
+  public static final Field OWN_PLAYS_POINT_TICKS = ownPlays("point_ticks", "ticks", Frame.NONE);
+
   // The end of the registration.
 
   /** The integers of one environment's block: every field but the aliases, end to end. */
@@ -953,9 +1050,108 @@ public final class Fields {
 
   private static final List<Field> FIELDS = List.copyOf(ALL);
 
-  /** Every field, in the order of the block, the aliases last. */
+  /**
+   * Every field: those of version 1.0 in the order of the block, their aliases after them, then the
+   * fields each later minor version added, in the order of the block. A 1.0 reader's list is the
+   * first part of this one.
+   */
   public static List<Field> fields() {
     return FIELDS;
+  }
+
+  /**
+   * The static facts the registry publishes per vocabulary row, since version 1.1: the metadata's
+   * {@code rows}, per fact {@code units} and {@code values}, one integer per vocabulary id, as
+   * {@code entity.row} names a row ({@link #toNode(Vocabulary)}). They are facts of the data
+   * version, read from the tables the environment loads (the rows as the battle core loads them),
+   * the same in every step and every battle on those tables; a metadata without a vocabulary (the
+   * synthetic engine's) gives each fact with no values. A row of neither the characters nor the
+   * buildings table (a card, spell, projectile or area effect row) has the bar rule {@code
+   * not_unit} and every other fact 0; a character or building row the battle core does not load,
+   * which no unit of the battle can be, has every attack fact -1.
+   *
+   * <p>{@code bar_rule} ({@code enum:bar_rule}): when an enemy unit of the row shows its health bar
+   * on the seat's screen ({@link SeatView.Bars}), so when {@code entity.hp} and {@code
+   * entity.shield} are shown: {@code never} (the row sets HideHealthbar and its starting client
+   * actions build no bar), {@code always} (it does not set HideHealthbar), {@code damaged} (it sets
+   * HideHealthbar and builds its own bar: shown from the unit's first damage on, for its life,
+   * healed back to full or not) or {@code damaged_rolling} (as {@code damaged}, and the bar is
+   * hidden while the unit runs an action that hides it while it rolls: the rows whose actions or
+   * ability reach such an action, and the rows such an action can change the unit to). Damage is
+   * the unit's hit points below their maximum, or its shield changed while the row has a shield (a
+   * hit, a lost shield and a shield that grows all count), watched at every tick.
+   *
+   * <p>So where a seat's {@code entity.hp} is -1 on a character row, its hit points are known in
+   * one case only: the row's bar rule is {@code damaged}, the row is not a trail ({@code
+   * entity.row} is not -1) and its flags do not hold {@code underground}. Such a unit is undamaged:
+   * its hit points are {@code entity.max_hp} exactly, and its shield is its starting shield (which
+   * no fact gives). Not known: a row of the rule {@code never}; a row of {@code damaged_rolling}
+   * (undamaged, or damaged and rolling: the roll hides the bar whatever the damage); any unit
+   * underground (an enemy ground unit travelling underground is shown as its trail, with its row,
+   * maximum hit points and level -1; the screen shows no bar of a unit underground). Hit points are
+   * always shown for the seat's own entities, for every tower and for a unit of the rule {@code
+   * always} that is not underground; projectiles and area effects have none (0). An enemy unit
+   * waiting its turn to deploy is not shown at all.
+   *
+   * <p>The attack facts, to compute how long until a unit can attack next from {@code
+   * entity.attack_ms}, {@code entity.load_ms} and {@code entity.hit_speed_percent}:
+   *
+   * <ul>
+   *   <li>{@code hit_speed_ms} (H): the row's HitSpeed, the attack time between two hits; 0 for a
+   *       row that does not attack.
+   *   <li>{@code load_time_ms} (T): the row's LoadTime, the wind-up.
+   *   <li>{@code attack_step_ms} (b): the attack time one attack tick adds at a hit speed of 100
+   *       percent: half the hit speed multiplier of the row's attack sequence step, 50 for a row
+   *       without a sequence; -1 for a row whose steps differ (the step a unit is at is not
+   *       exported).
+   *   <li>{@code attack_start_delay_ms} (D): the time an attack that starts from another state is
+   *       held at 0 before it runs, the start delay of the row's sequence steps, 0 for most rows;
+   *       -1 for a row whose steps differ.
+   *   <li>{@code attack_traits} ({@code flags:attack_traits}): {@code load_first_hit} (the row's
+   *       LoadFirstHit: after each hit the attack timer starts again from 0 and the load countdown
+   *       from T; crown towers never), {@code charge} (a ChargeRange: a charged unit, flag {@code
+   *       charged}, hits on its first attack tick), {@code dash} (a dash or jump attack, which
+   *       winds up and moves instead of hitting in its dash range), {@code special} (a special
+   *       attack with a load of its own).
+   * </ul>
+   *
+   * <p>The cooldown. Every timer is in ms and moves once a tick, 50 ms of battle time. On each tick
+   * its targeting runs (not while the unit deploys) the unit's targeting first takes 50 off the
+   * load countdown (to no less than 0), whatever the unit's buffs; then, on a tick it attacks, the
+   * attack time advances. The next hit fires on the tick its attack time crosses a multiple of H.
+   * With A = {@code entity.attack_ms}, L = {@code entity.load_ms} and p = {@code
+   * entity.hit_speed_percent} as a step's export gives them, the ticks n until the tick that fires
+   * the next hit, if the unit attacks on every tick from the next one on, are:
+   *
+   * <ol>
+   *   <li>s = floor(b * p / 100), the attack time a tick adds. With H = 0, s below 1 (a stun or a
+   *       freeze, p = 0) or b = -1 there is no next hit to count.
+   *   <li>A unit whose flags hold {@code charged}: n = 1.
+   *   <li>A above 0, an attack under way: n = ceil(((floor(A / H) + 1) * H - A) / s).
+   *   <li>A = 0, the next attack starts from its load. k = ceil(D / 50) when {@code entity.state}
+   *       is not {@code attacking}, else 0: the ticks the start delay holds the timer. The load
+   *       countdown on the tick the load is credited is Lc = max(L - 50 * (k + 1), 0).
+   *       <ul>
+   *         <li>T at most H: that tick credits the load run so far, T - Lc, and adds s; n = k +
+   *             max(1, ceil((H - T + Lc) / s)).
+   *         <li>T above H: no credit, and the timer waits at 0 while the countdown is above H; with
+   *             j = max(k + 1, ceil((L - H) / 50)), the first tick it is not, the timer takes s on
+   *             tick j: n = j - 1 + ceil(H / s).
+   *       </ul>
+   * </ol>
+   *
+   * The time until the unit can attack next is 50 * n ms. It is exact while the unit attacks from
+   * the next tick on and keeps a target in range, nothing resets its timers (taking a new target or
+   * losing one may) and its hit speed percent stays, with three limits: s is the battle's own step
+   * while the unit's buffs hold no speed-up and no slow-down together (with both the battle scales
+   * twice and s may be 1 ms off); a row with {@code dash} or {@code special} attacks otherwise in
+   * its dash or special range; and an action that makes a hit land at once is not shown. A unit
+   * still deploying ({@code entity.deploy_ms} above 0) does not attack yet, nor run its load
+   * countdown; one underground does not attack yet, its countdown running; a king tower attacks
+   * only once awake (flag {@code awake}); once the match is over every attack timer is held at 0.
+   */
+  public static List<RowFact> rowFacts() {
+    return ROW_FACTS;
   }
 
   /** The field of a name, or null for none. */
@@ -996,6 +1192,14 @@ public final class Fields {
             AbilityCommand.NO_CHARGES, "no_charges",
             AbilityCommand.ELIXIR, "elixir"));
     enums.put("ability_state", byIndex(ChampionController.stateNames()));
+    enums.put(
+        "bar_rule",
+        byValue(
+            BAR_NOT_UNIT, "not_unit",
+            BAR_NEVER, "never",
+            BAR_ALWAYS, "always",
+            BAR_DAMAGED, "damaged",
+            BAR_DAMAGED_ROLLING, "damaged_rolling"));
     enums.put(
         "entity_kind",
         byValue(
@@ -1049,6 +1253,13 @@ public final class Fields {
     enums.put("entity", byIndex(Schema.flagNames()));
     enums.put("play", byIndex(Schema.playFlagNames()));
     enums.put("slot", byBit(Schema.SLOT_EVOLUTION, "evolution", Schema.SLOT_HERO, "hero"));
+    enums.put(
+        "attack_traits",
+        byBit(
+            TRAIT_LOAD_FIRST_HIT, "load_first_hit",
+            TRAIT_CHARGE, "charge",
+            TRAIT_DASH, "dash",
+            TRAIT_SPECIAL, "special"));
     return Collections.unmodifiableMap(enums);
   }
 
@@ -1092,12 +1303,24 @@ public final class Fields {
    * The registry as the vector's metadata publishes it ({@code fields}): the version, the block's
    * integers, the entity table's capacity, the labels of the codes and bits ({@code enums}, {@link
    * #enums()}: per name an object from the code value, or the bit index of a flags' name, written
-   * as a string, to its label, the defined ones only in ascending order) and every field's name,
-   * offset, shape, tag, units, frame, the field it aliases (null for none) and its v4 source
-   * ({@code v4}: the region, {@code header} or {@code entity}, and the v4 index of each element
-   * past the seat and row axes, {@link #v4Source}; null for none).
+   * as a string, to its label, the defined ones only in ascending order), the row facts ({@code
+   * rows}, {@link #rowFacts()}: per fact its {@code units} and no {@code values} here, which {@link
+   * #toNode(Vocabulary)} fills in) and every field's name, offset, shape, tag, units, frame, the
+   * field it aliases (null for none) and its v4 source ({@code v4}: the region, {@code header} or
+   * {@code entity}, and the v4 index of each element past the seat and row axes, {@link #v4Source};
+   * null for none).
    */
   public static ObjectNode toNode() {
+    return toNode(null);
+  }
+
+  /**
+   * The registry as the metadata of a vector on tables publishes it: {@link #toNode()} with each
+   * row fact's {@code values} filled in, one per id of the vocabulary ({@link #rowFacts()}).
+   *
+   * @param vocabulary the vocabulary of the tables, or null for the facts without their values
+   */
+  public static ObjectNode toNode(Vocabulary vocabulary) {
     JsonNodeFactory json = JsonNodeFactory.instance;
     ObjectNode node = json.objectNode();
     node.put("version", VERSION);
@@ -1110,6 +1333,18 @@ public final class Fields {
               ObjectNode codes = enums.putObject(name);
               labels.forEach((code, label) -> codes.put(Integer.toString(code), label));
             });
+    ObjectNode rows = node.putObject("rows");
+    RowFacts facts = vocabulary == null ? null : vocabulary.rowFacts();
+    for (RowFact fact : ROW_FACTS) {
+      ObjectNode item = rows.putObject(fact.name());
+      item.put("units", fact.units());
+      ArrayNode values = item.putArray("values");
+      if (facts != null) {
+        for (int value : facts.values(fact.name())) {
+          values.add(value);
+        }
+      }
+    }
     ArrayNode list = node.putArray("fields");
     for (Field field : FIELDS) {
       ObjectNode item = list.addObject();
@@ -1181,6 +1416,11 @@ public final class Fields {
         frame,
         header(Schema.H_ENEMY_PLAYS + at, Schema.ENEMY_PLAY_ROWS, Schema.ENEMY_PLAY_INTS),
         Schema.ENEMY_PLAY_ROWS);
+  }
+
+  /** A seat field of the seat's own play rows, a column of {@code enemy.plays.*}'s. */
+  private static Field ownPlays(String field, String units, Frame frame) {
+    return seat("own.plays." + field, units, frame, null, Schema.ENEMY_PLAY_ROWS);
   }
 
   /** The truth of a seat field of the enemy play rows, by the seat whose enemy played. */
