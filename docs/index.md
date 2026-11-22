@@ -32,7 +32,7 @@ The `crforge-env` Python package under [`python/`](https://github.com/voonhous/c
 - `ClashParallelEnv`: a PettingZoo parallel environment for both seats of a battle, for self-play;
 - a battle can be forked to look ahead before acting, a battle can start mid-match from a replay, and recorded replays can be labelled for imitation learning.
 
-The observation schema, the action space and mask, the faults, the benchmark and the Python package are described in [The Environment](environment.md).
+The observation schema, the action space and mask, the faults, the field export with its registry and adapters, the benchmark and the Python package are described in [The Environment](environment.md).
 
 ## The game data
 

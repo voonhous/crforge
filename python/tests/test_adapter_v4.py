@@ -1,20 +1,20 @@
 """The v4 adapter rebuilds each seat's v4 observation bit for bit from the exported fields.
 
 The blocks are made by the inverse (``tests/fieldgen.py``) from v4 observations: random ones in
-v4's shape (no JVM), and real ones of a Ladder rollout and of the synthetic engine. Where the vector
-exports the fields itself, the adapter is held to its observations directly.
+v4's shape (no JVM), and real ones of a Ladder rollout and of the synthetic engine. On the fields
+the vector exports itself, the adapter is held to its observations directly (here briefly, and at
+every decision by the migration gate, ``tests/test_v4_gate.py``).
 """
 
 from __future__ import annotations
 
-import inspect
 import json
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from crforge_env import VectorBattle
+from crforge_env import VectorBattle, bench
 from crforge_env.adapters import v4
 from crforge_env.adapters.base import Adapter
 from crforge_env.adapters.v4 import V4Adapter
@@ -187,22 +187,29 @@ def test_synthetic_engine_observations_at_the_cap_are_rebuilt(install):
             assert_rebuilt(adapter, registry, observations, block)
 
 
-EXPORTS = "fields" in inspect.signature(VectorBattle.__init__).parameters
-
-
 @pytest.mark.ladder
-@pytest.mark.skipif(not EXPORTS, reason="this vector does not export the fields yet")
 def test_the_exported_fields_rebuild_the_ladder_observations(install, tables):
+    # The migration gate (tests/test_v4_gate.py) holds every decision so; this is its short form.
     with VectorBattle(4, 1, install=install, tables=tables, fields=True) as v:
         registry = Registry.from_metadata(v.metadata["fields"])
         adapter = V4Adapter(v.schema)
         adapter.bind(registry)
+        overflow = registry.field("entity.export_overflow").offset
         v.reset([21, 22, 23, 24], BLUE, RED)
         rng = np.random.default_rng(9)
         for step in range(600):
             v.step(draw_actions(v.masks, rng, 0.5))
             if step % 5 == 0:
-                exact = v.fields[:, registry.field("entity.export_overflow").offset] == 0
-                view = registry.view(v.fields, adapter.reads)
-                both = adapter.observe_both(view)
-                np.testing.assert_array_equal(both[exact], v.observations[exact])
+                assert not v.fields[:, overflow].any(), f"step {step}: the export dropped entities"
+                both = adapter.observe_both(registry.view(v.fields, adapter.reads))
+                np.testing.assert_array_equal(both, v.observations)
+
+
+@pytest.mark.ladder
+def test_the_benchmark_times_the_v4_rebuild(install, tables):
+    rows = bench.run("ladder", [2], 1, 10, 1, 0.3, str(install), str(tables), None, adapter="v4")
+    assert rows[0].fields and rows[0].adapter == "v4"
+    assert 0 < rows[0].adapter_us_per_call < rows[0].us_per_call
+    assert "+ fields + v4" in bench.format_row(rows[0])
+    with pytest.raises(ValueError, match="adapters"):
+        bench.run("ladder", [2], 1, 10, 1, 0.3, str(install), str(tables), None, adapter="v5")

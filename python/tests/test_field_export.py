@@ -94,3 +94,23 @@ def test_the_fields_are_a_view_refreshed_in_place_holding_the_v4_values(install,
             np.testing.assert_array_equal(
                 view[:, tick["offset"]], v.observations[:, 0, tick["v4"]["indices"][0]]
             )
+
+
+def test_the_fields_are_read_only(install, tables):
+    # A consumer cannot write the block, so no seat entity column can hold a value on a row its
+    # seat is not shown; the vector still refreshes it in place.
+    with VectorBattle(2, 1, install=install, tables=tables, fields=True) as v:
+        v.reset([1, 2], BLUE, RED)
+        assert not v.fields.flags.writeable
+        with pytest.raises(ValueError, match="read-only"):
+            v.fields[0, 0] = 1
+        with pytest.raises(ValueError, match="read-only"):
+            v.fields[:] = 0
+        with pytest.raises(ValueError):  # nor can the flag be turned back on
+            v.fields.flags.writeable = True
+        with pytest.raises(ValueError):
+            v.fields.reshape(-1).flags.writeable = True
+        tick = next(f for f in _registry()["fields"] if f["name"] == "game.tick")["offset"]
+        before = v.fields[:, tick].copy()
+        v.step()
+        assert (v.fields[:, tick] > before).all()

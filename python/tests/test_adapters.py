@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 from crforge_env.adapters import Adapter, HiddenFieldError, provenance, require_fair
+from crforge_env.adapters.v4 import V4Adapter
 from crforge_env.fields import FieldView, Registry, RegistryVersionError, UndeclaredFieldError
 
 SNAPSHOT = Path(__file__).parent / "data" / "fields_v1.json"
@@ -51,6 +52,18 @@ class Peeking(ElixirLead):
 
     def observe(self, fields: FieldView, seat: int) -> dict[str, np.ndarray]:
         return {"lead": fields["enemy.elixir.true"][:, seat]}
+
+
+class TrueHitPoints(Adapter):
+    """Every entity's true hit points, health bar shown or not: a hidden field."""
+
+    name = "true_hp"
+    registry_version = "1.0"
+    reads = ("entity.hp.true",)
+    outputs = {"hp": ((256,), np.dtype(np.int32))}  # noqa: RUF012
+
+    def observe(self, fields: FieldView, seat: int) -> dict[str, np.ndarray]:
+        return {"hp": fields["entity.hp.true"].copy()}
 
 
 @pytest.fixture(scope="module")
@@ -156,6 +169,23 @@ def test_require_fair_names_the_adapter_and_its_hidden_fields(registry):
     assert "enemy.elixir.true" in message
     assert message.count("elixir_lead:") == 1  # the fair adapter is not named
     assert issubclass(HiddenFieldError, ValueError)
+
+
+def test_the_v4_adapter_plays_fair_and_an_adapter_on_true_hit_points_does_not(registry):
+    v4, true_hp = V4Adapter(), TrueHitPoints()
+    v4.bind(registry)
+    true_hp.bind(registry)
+    assert registry.field("entity.hp").tag == "seat"
+    assert registry.field("entity.hp.true").tag == "hidden"
+    require_fair(v4)
+    with pytest.raises(HiddenFieldError, match=r"true_hp: entity\.hp\.true"):
+        require_fair(v4, true_hp)
+    record = provenance({"policy": [v4], "critic": [v4, true_hp]}, registry)
+    policy, critic = record["roles"]["policy"], record["roles"]["critic"]
+    assert policy["adapters"] == ["v4"]
+    assert policy["reads"] == sorted(v4.reads) and "entity.hp" in policy["reads"]
+    assert policy["hidden"] is False and policy["hidden_fields"] == []
+    assert critic["hidden"] is True and critic["hidden_fields"] == ["entity.hp.true"]
 
 
 def test_provenance_is_json_and_deterministic(registry):

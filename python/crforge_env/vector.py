@@ -145,9 +145,11 @@ class Fault:
     signature, or the writing failed"""
 
 
-def _view(buffer, dtype) -> np.ndarray:
-    """A numpy view of a Java direct buffer, sharing its memory."""
-    array = np.frombuffer(memoryview(buffer), dtype=dtype)
+def _view(buffer, dtype, readonly: bool = False) -> np.ndarray:
+    """A numpy view of a Java direct buffer, sharing its memory; ``readonly`` makes it one that
+    cannot be written, its flag never turned back on (a read-only memory view under it)."""
+    memory = memoryview(buffer)
+    array = np.frombuffer(memory.toreadonly() if readonly else memory, dtype=dtype)
     if array.flags["OWNDATA"]:
         raise RuntimeError("the buffer was copied, not viewed")
     return array
@@ -263,9 +265,10 @@ class VectorBattle:
     - ``dones``: uint8 ``(count,)``
     - ``infos``: int32 ``(count, info_ints)``
     - ``fields``: int32 ``(count, ints)``, the field export, each environment's block of the
-      registry's ``ints`` (``metadata["fields"]``), refreshed in place with the observations; None
-      unless the vector was made with ``fields=True`` (Ladder battles only). Without it no block is
-      made and nothing changes
+      registry's ``ints`` (``metadata["fields"]``), refreshed in place with the observations and
+      read-only (it cannot be written, nor its flag turned back on); None unless the vector was
+      made with ``fields=True`` (Ladder battles only). Without it no block is made and nothing
+      changes
 
     At start the schema is read from the vector's metadata and its version checked; ``metadata``
     holds the export (schema, configuration and, for Ladder battles, the vocabulary by name with
@@ -370,7 +373,9 @@ class VectorBattle:
         self.fields: np.ndarray | None = None
         if fields:
             ints = int(self.metadata["fields"]["ints"])
-            self.fields = _view(self._env.fields(), np.int32).reshape(count, ints)
+            # Read-only: only the vector writes the block (a seat's entity columns are 0 on every
+            # row it is not shown, and the views made of it rely on that).
+            self.fields = _view(self._env.fields(), np.int32, readonly=True).reshape(count, ints)
         self._closed = False
 
     @staticmethod

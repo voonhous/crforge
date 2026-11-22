@@ -21,6 +21,8 @@ The battle core holds no code of the environment. The environment reads the obse
 ```
 env/                     org.crforge.env
   Schema                 the flat layout: header, entity rows, mask, action codec, seat frames, codes, state names, scales (version 4)
+  Fields                 the field registry: every exported field's name, place, shape, tag (public, seat, hidden), units and frame (version 1.0)
+  FieldExport            writes a Ladder environment's block of the field export beside its observations
   Vocabulary             every card, character, building, projectile and area effect row named by number, and the buffs in a list of their own
   SeatView               what a seat's player sees of the field's characters and towers, and their health bars: the one place that rule lives
   BuffSlots              which of an entity's buffs its row's three slots list, in which order
@@ -43,6 +45,8 @@ python/                  crforge_env (the crforge-env package)
   ClashParallelEnv       one battle, both seats as the agents of a parallel multi-agent environment
   ClashGymEnv            one seat of a battle as a single-agent environment, the other seat a given policy
   Schema                 the layout, read from the vector's metadata at start
+  fields                 the field registry (Registry) and its read-only views of the exported block
+  adapters               the adapter base (Adapter), provenance and require_fair; v4 (V4Adapter), the v4 observation rebuilt from the fields
   ScriptedBot            a scripted opponent of a few readable rules on what its player sees
   evaluate               a policy against an opponent over many episodes, as wins, losses and draws
   label_replays          replays labelled for behavioural training, as numpy arrays per replay
@@ -451,7 +455,7 @@ The buffs an entity row names are numbered in a list of their own, `buff_names`:
 An id is stable within a data version only: a row another version adds moves every later id. So `VectorEnv.metadataJson()` (or `writeMetadata(path)`) is to be kept with every run and checkpoint. It holds:
 
 - the schema's version, sizes, field names, flag, refusal, fault and state names (`state_names`);
-- the field registry (`fields`, `org.crforge.env.Fields`), versioned apart from the schema (`version`, major.minor): the fields the field export holds, one block of `ints` integers per environment, each field's `name`, `offset`, `shape`, `tag` (`public`, `seat` with a leading seat axis, or `hidden` for a value a seat is not shown, named with `.true`), `units`, `frame`, `alias_of` (a hidden alias of a seat field read at the other seat) and `v4` (where a seat or public field sits in the v4 observation: `region`, `header` or `entity`, and the v4 index of each element past the seat and row axes), an entity table of `entity_capacity` rows, and `enums`, per `enum:<name>` or `flags:<name>` unit an object from each defined code value (an enum's) or bit index (a flags', bit k being `1 << k`), as a string, to its label, in ascending order. The registry is published whether the vector exports its fields or not (below, [The vector](#the-vector)); its snapshot is `python/tests/data/fields_v1.json`;
+- the field registry (`fields`, `org.crforge.env.Fields`), versioned apart from the schema: its `version` (major.minor), the block's size `ints`, the entity table's `entity_capacity`, `enums` and every field's `name`, `offset`, `shape`, `tag`, `units`, `frame`, `alias_of` and `v4`, as [The field registry and adapters](#the-field-registry-and-adapters) gives them. It is published whether the vector exports its fields or not; its committed snapshot is `python/tests/data/fields_v1.json`, so any change of it shows in review;
 - the scales (`scales`);
 - the configuration;
 - the vocabulary keyed by name (`names`, the name of each id) with the tables' `data_version`, `content_sha` and a `hash` of the list;
@@ -502,6 +506,7 @@ The buffers are direct `ByteBuffer`s in the machine's byte order, laid out envir
 | `rewards()` | `count x 2` | float32 |
 | `dones()` | `count` | bytes |
 | `infos()` | `count x 12` | int32 |
+| `fields()` | `count x Fields.INTS` | int32, a Ladder vector made with `VectorEnv.ladder(..., true)` only; null otherwise |
 
 They are made once and valid for the vector's life, so a Python bridge maps them once and moves no bytes in a step.
 
@@ -511,6 +516,7 @@ They are made once and valid for the vector's life, so a Python bridge maps them
 - `resetEnv(i, seed)` resets one battle on its decks, slot flags and setups. An autoreset episode keeps them too.
 - `startFromReplay(i, replay, tick)` and `startFromReplays(indices, replays, ticks)` start battles mid-match on replays' battles. See [Starting mid-match](#starting-mid-match).
 - `setAutoreset(false)` leaves finished battles for the caller.
+- `VectorEnv.ladder(tables, config, count, threads, true)` makes the vector export its fields too: see [The field registry and adapters](#the-field-registry-and-adapters).
 
 ### Side setups
 
@@ -783,9 +789,9 @@ The JVM starts once per process with the jars of the first `install`; another fo
 | `rewards` | float32 | `(count, 2)` |
 | `dones` | uint8 | `(count,)` |
 | `infos` | int32 | `(count, 12)` |
-| `fields` | int32 | `(count, ints)`, with `fields=True` only; None without |
+| `fields` | int32 | `(count, ints)`, read-only, with `fields=True` only; None without |
 
-`VectorBattle(..., fields=True)` (Ladder vectors only, `VectorEnv.ladder(..., true)`) makes the vector export its fields too: each battle's block of the registry's `ints` integers (`metadata["fields"]`), written beside its observations at every decision, at a reset, a fork moved in (`fork_from`) and a replay's start, and cleared with them at a fault. Field `f` is `fields[:, f.offset : f.offset + prod(f.shape)]`, reshaped to `(count, *f.shape)`; a seat field's first axis is the seat, and an alias is the field it names with that axis flipped. The seat and public fields are the v4 observation's own values: a seat's v4 entity rows are the first `entity.count` rows its `entity.visible` marks, and its entity columns are 0 on every other row. Without `fields=True` no block is made and nothing changes; the observations, masks and records are the same bit for bit either way.
+`VectorBattle(..., fields=True)` (Ladder vectors only, `VectorEnv.ladder(..., true)`) makes the vector export its fields too: each battle's block of the registry's `ints` integers (`metadata["fields"]`), written beside its observations at every decision, at a reset, a fork moved in (`fork_from`) and a replay's start, and cleared with them at a fault. `vector.fields` is read-only: it cannot be written, nor its flag turned back on, since the export relies on the rows it left 0 staying 0. Its fields are read by name through the registry ([The field registry and adapters](#the-field-registry-and-adapters)). Without `fields=True` no block is made and nothing changes; the observations, masks and records are the same bit for bit either way.
 
 `reset(seeds, deck0, deck1, slots0=None, slots1=None, setup0=None, setup1=None)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it), each deck's slot flags the same way (eight values, `schema.slot_evolution` and `schema.slot_hero`; None for none), and each side's `SideSetup` the same way (one for all battles or a list with one per battle, an entry None for none; see [Side setups](#side-setups)). A `SideSetup`'s fields (`towers`, `king_level`, `tower_level`, `card_levels`) left None take the configuration's: the princess towers, `LadderConfig.tower_level` and `LadderConfig.level`.
 
@@ -818,7 +824,7 @@ The action count is `schema.actions` (the metadata's `actions`), the first abili
 
 ### The field registry and adapters
 
-The field export holds one block of `ints` 32-bit integers per environment (a numpy array of shape `(count, ints)`, int32), and the field registry names every field in it. `crforge_env.fields.Registry` reads the registry from the metadata (`Registry.from_metadata(vector.metadata["fields"])`) or from a saved copy of that node (`Registry.from_file(path)`, the snapshot `python/tests/data/fields_v1.json` for one). It gives `version`, `ints`, `entity_capacity`, `enums` (per enum or flags name, the labels by integer code or bit index) and `fields`, each a `Field` (`name`, `offset`, `shape`, `tag`, `units`, `frame`, `alias_of`, `v4`, and `size`, the integers it takes, 0 for an alias), in registry order; `registry.field(name)` gives one and raises `KeyError` for a name it lacks.
+The field export holds one block of `ints` 32-bit integers per environment (a numpy array of shape `(count, ints)`, int32), and the field registry (`org.crforge.env.Fields`, the metadata's `fields`) names every field in it: field `f` is `f.shape` integers at `f.offset`, row-major, the fields end to end in registry order. `crforge_env.fields.Registry` reads the registry from the metadata (`Registry.from_metadata(vector.metadata["fields"])`) or from a saved copy of that node (`Registry.from_file(path)`, the snapshot `python/tests/data/fields_v1.json` for one). It gives `version`, `ints`, `entity_capacity`, `enums` (per `enum:<name>` or `flags:<name>` unit, the labels by integer code or bit index, bit k being `1 << k`; the metadata writes the codes as strings, ascending) and `fields`, each a `Field` (`name`, `offset`, `shape`, `tag`, `units`, `frame`, `alias_of`, `v4`, and `size`, the integers it takes, 0 for an alias), in registry order; `registry.field(name)` gives one and raises `KeyError` for a name it lacks.
 
 The registry is checked as it is read, and a registry that fails raises `ValueError` naming the field: no two fields share an integer and every field lies inside the block; each tag is `public`, `seat` or `hidden`; a seat field's first axis is the seat (2); an `enum:<name>` or `flags:<name>` unit names an enum the registry has; an alias names a stored seat field of the same shape and offset, and is itself tagged `hidden`.
 
@@ -831,6 +837,10 @@ The tags make the honest choice the default:
 - `hidden` fields are what a seat is not shown, or not in full. A true value has a name of its own, the seat field's name with `.true` after it (`entity.hp.true`, `enemy.elixir.true`), so it is never read by accident.
 
 An alias holds no integers: `enemy.elixir.true` is `own.elixir` read at the other seat, and its view is `own.elixir`'s with the seat axis flipped.
+
+The entity fields are a table of `entity_capacity` (256) rows, one entity a row, in the order the v4 packer goes through them: the towers and characters in the battle's order (oldest first), every one, seen by a seat or not, then the area effects and projectiles, newest first. `entity.visible` (a seat field) marks the rows each seat is shown; entities past the capacity are counted in `entity.export_overflow` (hidden).
+
+A seat or public field with a `v4` source names where its values sit in the v4 observation (`region`, `header` or `entity`, and the v4 index of each element past the seat and row axes); [The v4 adapter](#the-v4-adapter) reads them.
 
 `registry.views(block)` gives every field as a view of the block, shape `(count, *shape)`. Nothing is copied: views made once follow a block refreshed in place each step. The block must be a C-contiguous int32 array in the machine's byte order, of shape `(count, ints)`; anything else raises `ValueError`. `registry.view(block, names)` gives a `FieldView` of the named fields only: a read-only mapping whose arrays cannot be written, and where any other name, even one the registry has, raises `UndeclaredFieldError` (a `KeyError`) saying the field was not declared.
 
@@ -854,7 +864,7 @@ registry = Registry.from_metadata(vector.metadata["fields"])
 lead = ElixirLead()
 lead.bind(registry)
 require_fair(lead)  # raises HiddenFieldError if it read enemy.elixir.true
-out = lead.observe(lead.view(block), seat=0)["lead"]  # (count,)
+out = lead.observe(lead.view(vector.fields), seat=0)["lead"]  # (count,)
 ```
 
 `require_fair(*adapters)` raises `HiddenFieldError` (a `ValueError`) naming every adapter that reads a hidden field and the fields it reads, for a model that must play only on what its seat is shown. An adapter that reads hidden fields is still allowed elsewhere, a teacher or an analysis, say; the check is where fair play is required.
@@ -871,7 +881,19 @@ The roles and every role's reads and hidden fields are sorted, so the same adapt
 
 ### The v4 adapter
 
-`crforge_env.adapters.v4.V4Adapter` rebuilds each seat's schema version 4 observation, bit for bit, from the exported fields (the registry `Fields`, the metadata's `fields`). It reads every field the registry gives a `v4` source, plus `entity.visible` and `entity.count`, and no hidden field: a seat's v4 rows are the first `entity.count[s]` table rows whose `entity.visible[s]` is 1, in row order, and every header int no source names is 0. Seat fields are already in the seat's frame, so nothing is mirrored. `observe(fields, seat)` gives one seat, `observe_both(fields)` both, equal to `vector.observations` while `entity.export_overflow` is 0. All its indices come from the registry at bind, and it is vectorised over environments and rows: about 7 ms a call on 256 environments with 200 rows a seat, 3 ms with 60. Its inverse, `python/tests/fieldgen.py`, makes a field block from v4 observations for the tests.
+`crforge_env.adapters.v4.V4Adapter` rebuilds each seat's schema version 4 observation, bit for bit, from the exported fields. It reads every field the registry gives a `v4` source, plus `entity.visible` and `entity.count`, and no hidden field, so `require_fair` accepts it. A seat's v4 rows are the first `entity.count[s]` table rows whose `entity.visible[s]` is 1, in row order, the k-th of them v4's row k (`entity.visible` marks the rows a seat is shown, and past the 200 rows v4 keeps it lists no more); the seat entity columns hold v4's values on those rows and 0 on every other one, and every header int no source names is 0. Seat fields are already in the seat's frame, so nothing is mirrored. `observe(fields, seat)` gives one seat, `observe_both(fields, out=None)` both, `(count, 2, 7024)`, equal to `vector.observations` while `entity.export_overflow` is 0. All its indices come from the registry at bind, and it is vectorised over environments and rows. Its inverse, `python/tests/fieldgen.py`, makes a field block from v4 observations for the tests.
+
+```python
+registry = Registry.from_metadata(vector.metadata["fields"])
+v4 = V4Adapter(vector.schema)
+v4.bind(registry)
+view = v4.view(vector.fields)  # made once: it follows the block as the vector steps
+out = np.zeros(vector.observations.shape, dtype=np.int32)
+vector.step()
+v4.observe_both(view, out=out)  # equal to vector.observations
+```
+
+The migration gate, `python/tests/test_v4_gate.py`, holds it so at every decision, for both seats, with `entity.export_overflow` 0 everywhere and no decision left out: random mask-legal battles on several decks (evolution and hero slots, a champion) on one thread and three, played until episodes end and autoreset starts new ones; forks moved in, as the battle is and as each seat knows it; starts on replays the vector wrote and on the example battles; `reset_env` mid-run; and a faulted battle, cleared. Rebuilding both seats costs about 0.9 ms a call on 64 environments and 3 ms on 256 ([Performance](#performance)), on top of a Ladder step; the Java v4 packer stays beside it, unchanged.
 
 ### The wrappers
 
@@ -1099,6 +1121,8 @@ Schema version 3 adds:
 - the state names and scales against the Java `Schema`;
 - the entity columns read by name.
 
+The field export's tests: in Java (`FieldsTest`, `FieldExportTest`), the registry against its committed snapshot and every exported field against the observations; in Python, the registry read and checked (`tests/test_field_registry.py`), the read-only views and the declared reads, `require_fair` and provenance (`tests/test_adapters.py`), the block of a vector (`tests/test_field_export.py`), the v4 adapter on random, capped and overflowing blocks made by its inverse (`tests/test_adapter_v4.py`), and the migration gate ([The v4 adapter](#the-v4-adapter), `tests/test_v4_gate.py`).
+
 Schema version 4 adds the play kinds and flags, the unknown value (-1) and the new fields against the Java `Schema`, and the bounds of the enemy plays' kinds, flags and forms not yet shown. The scripted bot leaves an enemy hidden or underground out of its spells' targets and takes an enemy whose health bar the screen does not draw as unhurt.
 
 The label tests write an episode of the environment as a replay (`VectorBattle.replay_json`) and label it back. At 1-tick decisions its own observations, masks and hand slots come back and the labels drive the same battle. A crawl record of it, plain or compressed, is labelled as the replay document is, on one thread or two, in memory or written to a folder.
@@ -1131,7 +1155,7 @@ CI runs them in the `python` job of `build-and-test.yml`, on the tables of the l
 
 ### The Python-side benchmark
 
-`crforge-env-bench --install <env/build/install/env> --tables <folder>` steps a vector of 1, 16, 64 and 256 environments of each engine (`--engine` picks one; `--fields` makes the Ladder vectors export their fields too) for 200 decisions, 3 trials after a warm-up, with a random open play 3 decisions in 10 a seat drawn on arrays in Python. It times the whole loop: the action draw, the call into the JVM and the reads of rewards and dones.
+`crforge-env-bench --install <env/build/install/env> --tables <folder>` steps a vector of 1, 16, 64 and 256 environments of each engine (`--engine` picks one; `--fields` makes the Ladder vectors export their fields too, and `--adapter v4` also rebuilds both seats' v4 observations from them after every step, inside the timed loop, reporting that call's cost in a column of its own) for 200 decisions, 3 trials after a warm-up, with a random open play 3 decisions in 10 a seat drawn on arrays in Python. It times the whole loop: the action draw, the call into the JVM and the reads of rewards and dones.
 
 Every battle is the same match of two decks of card row names (`Knight`, `Archer`, `Musketeer`, `Giant`, `MiniPekka`, `Fireball`, `Arrows`, and `Zap` or `Goblins`). The best trial is reported, with the spread over the trials.
 
@@ -1170,6 +1194,8 @@ Measured on 2026-10-16 on one Mac (Apple M4 Pro, 14 cores, JDK 17.0.14), with ot
 Schema version 3 (2026-10-18) writes 6,792 integers a seat instead of 2,528, and reads each entity's buffs, target and timers off the core. It was measured with `crforge-env-bench --engine ladder --counts 64 --threads 1 --steps 400 --repeats 5`, version 2 and version 3 alternated three times each on data version 16.402.21. One thread steps 17,900 to 18,300 decisions a second under version 2 and 16,900 to 17,900 under version 3 (best of 5 trials each; 1-minute load average 6 to 7, other work running): about 4 percent slower, within the spread of a busy machine.
 
 The field export (`--fields`, 2026-11-22) costs a Ladder decision about 4 us: export off and on alternated three times each with `crforge-env-bench --engine ladder --counts 64 --threads 1 --steps 400 --repeats 5` on data version 16.635.8, JDK 21, one thread steps 17,200 to 18,600 decisions a second without it and 17,100 to 17,400 with it (best of 5 trials each; 1-minute load average 3.9 to 4.7, other work running), about 6 percent slower. The export builds each block in a scratch of its thread and copies out only the entity table's rows in use; without `--fields` nothing of it runs.
+
+Reading the observations through the v4 adapter instead costs more. With `crforge-env-bench --engine ladder --counts 64 256 --threads 1 --steps 400 --adapter v4` (3 runs, 3 to 5 trials each, alternated with `--fields` alone; data version 16.635.8, JDK 21, Python 3.12.7, numpy 2.5.5; 1-minute load average 4.4 to 5.0 at each run's start, other work running), `V4Adapter.observe_both` into one array made once takes 885 to 950 us a call on 64 environments (about 14 us an environment) and 2,970 to 3,130 us on 256 (about 12 us an environment), on battles of up to about 70 rows a seat (about 7 ms on 256 environments of 200 rows a seat, on blocks made by `tests/fieldgen.py`). One thread then steps 12,700 to 13,400 decisions a second on 64 environments and 13,600 to 14,200 on 256, against 16,000 to 16,600 and 16,700 to 16,800 with the export alone: about 20 percent fewer. The Java packer writes the same observations at no cost past the step.
 
 A seat's observation is 27 kilobytes, so a 64-battle vector's observations are 3.5 megabytes a step (1.3 under version 2), and a replay labelled at 1-tick decisions holds about 27 kilobytes a row in memory.
 
