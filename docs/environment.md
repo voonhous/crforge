@@ -451,7 +451,7 @@ The buffs an entity row names are numbered in a list of their own, `buff_names`:
 An id is stable within a data version only: a row another version adds moves every later id. So `VectorEnv.metadataJson()` (or `writeMetadata(path)`) is to be kept with every run and checkpoint. It holds:
 
 - the schema's version, sizes, field names, flag, refusal, fault and state names (`state_names`);
-- the field registry (`fields`, `org.crforge.env.Fields`), versioned apart from the schema (`version`, major.minor): the fields the field export will hold, one block of `ints` integers per environment, each field's `name`, `offset`, `shape`, `tag` (`public`, `seat` with a leading seat axis, or `hidden` for a value a seat is not shown, named with `.true`), `units`, `frame`, `alias_of` (a hidden alias of a seat field read at the other seat) and `v4` (where a seat or public field sits in the v4 observation: `region`, `header` or `entity`, and the v4 index of each element past the seat and row axes), an entity table of `entity_capacity` rows, and `enums`, per `enum:<name>` or `flags:<name>` unit an object from each defined code value (an enum's) or bit index (a flags', bit k being `1 << k`), as a string, to its label, in ascending order. Only the registry is published so far, not the export; its snapshot is `python/tests/data/fields_v1.json`;
+- the field registry (`fields`, `org.crforge.env.Fields`), versioned apart from the schema (`version`, major.minor): the fields the field export holds, one block of `ints` integers per environment, each field's `name`, `offset`, `shape`, `tag` (`public`, `seat` with a leading seat axis, or `hidden` for a value a seat is not shown, named with `.true`), `units`, `frame`, `alias_of` (a hidden alias of a seat field read at the other seat) and `v4` (where a seat or public field sits in the v4 observation: `region`, `header` or `entity`, and the v4 index of each element past the seat and row axes), an entity table of `entity_capacity` rows, and `enums`, per `enum:<name>` or `flags:<name>` unit an object from each defined code value (an enum's) or bit index (a flags', bit k being `1 << k`), as a string, to its label, in ascending order. The registry is published whether the vector exports its fields or not (below, [The vector](#the-vector)); its snapshot is `python/tests/data/fields_v1.json`;
 - the scales (`scales`);
 - the configuration;
 - the vocabulary keyed by name (`names`, the name of each id) with the tables' `data_version`, `content_sha` and a `hash` of the list;
@@ -783,6 +783,9 @@ The JVM starts once per process with the jars of the first `install`; another fo
 | `rewards` | float32 | `(count, 2)` |
 | `dones` | uint8 | `(count,)` |
 | `infos` | int32 | `(count, 12)` |
+| `fields` | int32 | `(count, ints)`, with `fields=True` only; None without |
+
+`VectorBattle(..., fields=True)` (Ladder vectors only, `VectorEnv.ladder(..., true)`) makes the vector export its fields too: each battle's block of the registry's `ints` integers (`metadata["fields"]`), written beside its observations at every decision, at a reset, a fork moved in (`fork_from`) and a replay's start, and cleared with them at a fault. Field `f` is `fields[:, f.offset : f.offset + prod(f.shape)]`, reshaped to `(count, *f.shape)`; a seat field's first axis is the seat, and an alias is the field it names with that axis flipped. The seat and public fields are the v4 observation's own values: a seat's v4 entity rows are the first `entity.count` rows its `entity.visible` marks, and its entity columns are 0 on every other row. Without `fields=True` no block is made and nothing changes; the observations, masks and records are the same bit for bit either way.
 
 `reset(seeds, deck0, deck1, slots0=None, slots1=None, setup0=None, setup1=None)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it), each deck's slot flags the same way (eight values, `schema.slot_evolution` and `schema.slot_hero`; None for none), and each side's `SideSetup` the same way (one for all battles or a list with one per battle, an entry None for none; see [Side setups](#side-setups)). A `SideSetup`'s fields (`towers`, `king_level`, `tower_level`, `card_levels`) left None take the configuration's: the princess towers, `LadderConfig.tower_level` and `LadderConfig.level`.
 
@@ -1071,7 +1074,7 @@ CI runs them in the `python` job of `build-and-test.yml`, on the tables of the l
 
 ### The Python-side benchmark
 
-`crforge-env-bench --install <env/build/install/env> --tables <folder>` steps a vector of 1, 16, 64 and 256 environments of each engine (`--engine` picks one) for 200 decisions, 3 trials after a warm-up, with a random open play 3 decisions in 10 a seat drawn on arrays in Python. It times the whole loop: the action draw, the call into the JVM and the reads of rewards and dones.
+`crforge-env-bench --install <env/build/install/env> --tables <folder>` steps a vector of 1, 16, 64 and 256 environments of each engine (`--engine` picks one; `--fields` makes the Ladder vectors export their fields too) for 200 decisions, 3 trials after a warm-up, with a random open play 3 decisions in 10 a seat drawn on arrays in Python. It times the whole loop: the action draw, the call into the JVM and the reads of rewards and dones.
 
 Every battle is the same match of two decks of card row names (`Knight`, `Archer`, `Musketeer`, `Giant`, `MiniPekka`, `Fireball`, `Arrows`, and `Zap` or `Goblins`). The best trial is reported, with the spread over the trials.
 
@@ -1108,6 +1111,8 @@ Measured on 2026-10-16 on one Mac (Apple M4 Pro, 14 cores, JDK 17.0.14), with ot
 | `synthetic` | 256 | 4 | 4,334 +/- 111 | 1,109,385 | - |
 
 Schema version 3 (2026-10-18) writes 6,792 integers a seat instead of 2,528, and reads each entity's buffs, target and timers off the core. It was measured with `crforge-env-bench --engine ladder --counts 64 --threads 1 --steps 400 --repeats 5`, version 2 and version 3 alternated three times each on data version 16.402.21. One thread steps 17,900 to 18,300 decisions a second under version 2 and 16,900 to 17,900 under version 3 (best of 5 trials each; 1-minute load average 6 to 7, other work running): about 4 percent slower, within the spread of a busy machine.
+
+The field export (`--fields`, 2026-11-22) costs a Ladder decision about 4 us: export off and on alternated three times each with `crforge-env-bench --engine ladder --counts 64 --threads 1 --steps 400 --repeats 5` on data version 16.635.8, JDK 21, one thread steps 17,200 to 18,600 decisions a second without it and 17,100 to 17,400 with it (best of 5 trials each; 1-minute load average 3.9 to 4.7, other work running), about 6 percent slower. The export builds each block in a scratch of its thread and copies out only the entity table's rows in use; without `--fields` nothing of it runs.
 
 A seat's observation is 27 kilobytes, so a 64-battle vector's observations are 3.5 megabytes a step (1.3 under version 2), and a replay labelled at 1-tick decisions holds about 27 kilobytes a row in memory.
 

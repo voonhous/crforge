@@ -34,6 +34,19 @@ public abstract class BufferedEnv implements BattleEnv {
   /** The environment's info record, {@link Schema#INFO_INTS} integers. */
   protected IntBuffer info;
 
+  /**
+   * The environment's block of the field export, {@link Fields#INTS} integers, or null when its
+   * vector exports no fields. Cleared with the observations ({@link #clear}); an environment that
+   * writes fields writes it beside its observations.
+   */
+  protected IntBuffer fields;
+
+  /**
+   * The leading rows of the entity table of {@link #fields} that may hold anything but 0: every row
+   * past them is 0, so an export need write no further ({@link FieldExport}).
+   */
+  protected int fieldRows;
+
   /** One seat's observation under construction, zeroed by {@link #clearSeatScratch}. */
   protected final int[] seatScratch = new int[Schema.SEAT_INTS];
 
@@ -50,6 +63,13 @@ public abstract class BufferedEnv implements BattleEnv {
     this.masks = masks;
     this.rewards = rewards;
     this.info = info;
+  }
+
+  @Override
+  public final void bindFields(IntBuffer fields) {
+    this.fields = fields;
+    // A block's rows are not known when it is bound: the first export writes them all.
+    fieldRows = Fields.ENTITY_CAPACITY;
   }
 
   @Override
@@ -136,7 +156,10 @@ public abstract class BufferedEnv implements BattleEnv {
     return masks.get(seat * Schema.ACTIONS + action) != 0;
   }
 
-  /** Clears everything the environment writes: the observations, masks, rewards and info. */
+  /**
+   * Clears everything the environment writes: the observations, masks, rewards and info, and the
+   * fields when it has a block.
+   */
   protected final void clear() {
     clearSeatScratch();
     clearMaskScratch();
@@ -148,5 +171,12 @@ public abstract class BufferedEnv implements BattleEnv {
     for (int i = 0; i < info.limit(); i++) {
       info.put(i, 0);
     }
+    if (fields != null) {
+      fields.put(0, NO_FIELDS);
+      fieldRows = 0;
+    }
   }
+
+  /** A zero block of the field export. */
+  private static final int[] NO_FIELDS = new int[Fields.INTS];
 }
