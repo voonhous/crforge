@@ -869,7 +869,7 @@ out = lead.observe(lead.view(vector.fields), seat=0)["lead"]  # (count,)
 
 `require_fair(*adapters)` raises `HiddenFieldError` (a `ValueError`) naming every adapter that reads a hidden field and the fields it reads, for a model that must play only on what its seat is shown. An adapter that reads hidden fields is still allowed elsewhere, a teacher or an analysis, say; the check is where fair play is required.
 
-`provenance(roles, registry)` records which fields each role of a run read, as data ready for JSON, to keep with the run and its checkpoints:
+`provenance(roles, registry)` records which fields each role of a run read, as data ready for JSON, to keep with the run and its checkpoints. Every adapter must be bound to a registry of the same version (an adapter may work out its reads as it binds); one that is not raises `ValueError`:
 
 ```python
 provenance({"learner": [lead]}, registry)

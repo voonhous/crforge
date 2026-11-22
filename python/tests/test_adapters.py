@@ -225,5 +225,26 @@ def test_provenance_refuses_a_read_the_registry_lacks(registry):
         name = "missing"
         reads = ("own.mana",)
 
+    missing = ElixirLead()
+    missing.bind(registry)
+    missing.name = "missing"
+    missing.reads = ("own.mana",)  # changed after binding
     with pytest.raises(ValueError, match=r"missing.*own\.mana"):
-        provenance({"learner": [Missing()]}, registry)
+        provenance({"learner": [missing]}, registry)
+
+
+def test_provenance_refuses_an_adapter_not_bound(registry):
+    # An adapter may work out its reads at bind (the v4 adapter does): unbound, its record would
+    # be empty and say it read nothing hidden.
+    with pytest.raises(ValueError, match=r"v4.*not bound"):
+        provenance({"policy": [V4Adapter()]}, registry)
+
+
+def test_provenance_refuses_an_adapter_bound_to_another_registry_version(registry):
+    node = json.loads(SNAPSHOT.read_text())
+    node["version"] = "1.1"
+    other = Registry.from_metadata(node)
+    lead = ElixirLead()
+    lead.bind(other)
+    with pytest.raises(ValueError, match=r"elixir_lead.*1\.1.*1\.0"):
+        provenance({"policy": [lead]}, registry)

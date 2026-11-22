@@ -97,13 +97,25 @@ def _hidden_reads(adapter: Adapter, registry: Registry) -> tuple[str, ...]:
     return tuple(name for name in adapter.reads if registry.field(name).tag == "hidden")
 
 
+def _check_bound_to(adapter: Adapter, registry: Registry) -> None:
+    if adapter.registry is None:
+        raise ValueError(f"adapter {adapter.name!r} is not bound: call bind(registry) first")
+    if adapter.registry.version != registry.version:
+        raise ValueError(
+            f"adapter {adapter.name!r} is bound to the field registry {adapter.registry.version}, "
+            f"not {registry.version}"
+        )
+
+
 def provenance(roles: Mapping[str, Sequence[Adapter]], registry: Registry) -> dict:
     """What each role of a run read, as JSON-ready data to keep with the run.
 
     ``roles`` maps a role (``"learner"``, ``"opponent"``) to its adapters. The record is
     deterministic: the roles and every role's reads and hidden fields are sorted; the adapters stay
-    in the order given, the order their outputs are built in. Tags are the ``registry``'s; a read
-    it lacks raises ValueError.
+    in the order given, the order their outputs are built in. Tags are the ``registry``'s. Every
+    adapter must be bound to a registry of the same version (an adapter may work out its reads at
+    :meth:`Adapter.bind`, so an unbound one could not say what it reads); one that is not, or a read
+    the registry lacks, raises ValueError.
 
         {"registry": "1.0", "roles": {"learner": {"adapters": ["v4"], "reads": [...],
          "hidden": false, "hidden_fields": []}}}
@@ -114,6 +126,7 @@ def provenance(roles: Mapping[str, Sequence[Adapter]], registry: Registry) -> di
         reads: set[str] = set()
         hidden: set[str] = set()
         for adapter in adapters:
+            _check_bound_to(adapter, registry)
             _check_reads(adapter, registry)
             reads.update(adapter.reads)
             hidden.update(_hidden_reads(adapter, registry))
