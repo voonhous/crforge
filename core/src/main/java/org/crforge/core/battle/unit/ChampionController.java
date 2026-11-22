@@ -247,6 +247,14 @@ public final class ChampionController extends ActionInstance {
   }
 
   /**
+   * The button states' names, by state number, as an action row spells them: the field export's
+   * labels of a champion slot's state.
+   */
+  public static List<String> stateNames() {
+    return STATE_NAMES;
+  }
+
+  /**
    * The button state a name spells, matched exactly; 0, the unknown state, for any other name.
    *
    * @param name the state's name

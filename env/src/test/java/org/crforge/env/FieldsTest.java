@@ -19,6 +19,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import org.crforge.core.battle.unit.ChampionController;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -259,5 +261,85 @@ class FieldsTest {
       source.indices().forEach(i -> v4.add(Schema.headerFields().get(i)));
       assertThat(v4).as("v4 fields of %s", field.name()).hasSize(1);
     }
+  }
+
+  @Test
+  void theMetadataGivesEachFieldItsSchemaFourSource() {
+    JsonNode fields = Fields.toNode().get("fields");
+    int sources = 0;
+    for (JsonNode node : fields) {
+      Fields.V4Source source = Fields.v4Source(node.get("name").asText());
+      JsonNode v4 = node.get("v4");
+      assertThat(v4).as("v4 of %s", node.get("name")).isNotNull();
+      if (source == null) {
+        assertThat(v4.isNull()).isTrue();
+        continue;
+      }
+      sources++;
+      assertThat(v4.get("region").asText()).isEqualTo(source.entity() ? "entity" : "header");
+      List<Integer> indices = new ArrayList<>();
+      v4.get("indices").forEach(i -> indices.add(i.asInt()));
+      assertThat(indices).isEqualTo(source.indices());
+    }
+    assertThat(sources).isPositive();
+  }
+
+  @Test
+  void everyEnumAndFlagsUnitHasItsLabels() {
+    Map<String, SortedMap<Integer, String>> enums = Fields.enums();
+    Set<String> used = new HashSet<>();
+    for (Fields.Field field : Fields.fields()) {
+      String units = field.units();
+      if (units.startsWith("enum:") || units.startsWith("flags:")) {
+        String name = units.substring(units.indexOf(':') + 1);
+        assertThat(enums).as("labels of %s", units).containsKey(name);
+        assertThat(enums.get(name)).as("labels of %s", units).isNotEmpty();
+        used.add(name);
+      }
+    }
+    // Every list is a unit's, and no name is both an enum's and a flags'.
+    assertThat(enums.keySet()).isEqualTo(used);
+    Set<String> enumNames = new HashSet<>();
+    Set<String> flagsNames = new HashSet<>();
+    for (Fields.Field field : Fields.fields()) {
+      String units = field.units();
+      String name = units.substring(units.indexOf(':') + 1);
+      if (units.startsWith("enum:")) {
+        enumNames.add(name);
+      } else if (units.startsWith("flags:")) {
+        flagsNames.add(name);
+      }
+    }
+    assertThat(enumNames).doesNotContainAnyElementsOf(flagsNames);
+    // The labels sit at the codes' own values and bits.
+    List<String> refusals = Schema.refusalNames();
+    for (int code = 0; code < refusals.size(); code++) {
+      assertThat(enums.get("refusal").get(code)).isEqualTo(refusals.get(code));
+    }
+    assertThat(enums.get("refusal"))
+        .hasSize((int) refusals.stream().filter(n -> n != null).count());
+    assertThat(List.copyOf(enums.get("state").values())).isEqualTo(Schema.stateNames());
+    assertThat(List.copyOf(enums.get("entity").values())).isEqualTo(Schema.flagNames());
+    // Only the defined codes: the sparse gate codes, not a list up to the highest.
+    assertThat(enums.get("ability_refusal")).hasSize(11).containsEntry(0, "none");
+    assertThat(enums.get("run_refusal")).hasSize(7);
+    assertThat(enums.get("ability_state").get(ChampionController.READY)).isEqualTo("Ready");
+    assertThat(enums.get("run_refusal").get(Schema.RUN_NOT_PLACED)).isEqualTo("not_placed");
+    assertThat(enums.get("entity_kind").get(Schema.KIND_AREA)).isEqualTo("area");
+    assertThat(enums.get("slot").get(Integer.numberOfTrailingZeros(Schema.SLOT_HERO)))
+        .isEqualTo("hero");
+    JsonNode node = Fields.toNode().get("enums");
+    assertThat(node.size()).isEqualTo(enums.size());
+    assertThat(node.get("result").get(Integer.toString(Schema.LOST)).asText()).isEqualTo("lost");
+    // Each name's object holds its codes as strings, in ascending order, every label a string.
+    node.fields()
+        .forEachRemaining(
+            entry -> {
+              List<Integer> codes = new ArrayList<>();
+              entry.getValue().fieldNames().forEachRemaining(k -> codes.add(Integer.parseInt(k)));
+              assertThat(codes).as("codes of %s", entry.getKey()).isSorted();
+              assertThat(codes).isEqualTo(List.copyOf(enums.get(entry.getKey()).keySet()));
+              entry.getValue().forEach(label -> assertThat(label.isTextual()).isTrue());
+            });
   }
 }

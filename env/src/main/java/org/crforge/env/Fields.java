@@ -10,10 +10,17 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import org.crforge.core.battle.match.BattleTimeline;
+import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.unit.AbilityCommand;
+import org.crforge.core.battle.unit.ChampionController;
 
 /**
  * The registry of the fields an environment exports, version {@link #VERSION}: every field's name,
@@ -57,25 +64,28 @@ import java.util.Map;
  * <p>The entity table. The entity fields hold {@link #ENTITY_CAPACITY} rows, one entity a row, in
  * the order the v4 packer goes through them: the towers and characters in the battle's holder order
  * (oldest first), every one of them, seen by a seat or not, then the area effects and projectiles,
- * newest first. Entities past the capacity are counted in {@code entity.export_overflow}. A seat's
- * {@code entity.visible} marks the rows it is shown; its v4 entity rows are the first {@link
- * Schema#MAX_ENTITIES} rows it is shown, in row order, so a stable filter of the rows on {@code
- * entity.visible} cut at {@link Schema#MAX_ENTITIES} gives the v4 rows in their order. The seat
- * entity fields hold the v4 row's values in those rows and 0 in every other row (a row the seat is
- * not shown, a row past the v4 cut, a row holding no entity), as v4 leaves its rows past the count.
+ * newest first. Entities past the capacity are counted in {@code entity.export_overflow}.
+ *
+ * <p>The rows a seat's v4 observation lists. A seat's {@code entity.visible} marks the rows the
+ * seat is shown (seen), not the rows its v4 observation lists: past {@link Schema#MAX_ENTITIES}
+ * rows shown, v4 lists no more. The rows v4 lists for seat s are the first {@code entity.count[s]}
+ * rows, in row order, whose {@code entity.visible[s]} is 1; the k-th of them is v4's entity row k.
+ * An adapter rebuilding v4 needs both fields: {@code entity.visible} to find the rows, {@code
+ * entity.count} to cut them. The seat entity columns (every seat field of the table but {@code
+ * entity.visible}) hold v4's values on the rows v4 lists, and 0 on every other row: a row the seat
+ * is not shown, a row it is shown past the cut, a row holding no entity. The rebuild is exact while
+ * {@code entity.export_overflow} is 0.
  *
  * <p>The units. A field's units are one of: {@code ticks} (50 ms battle steps), {@code ms}, {@code
  * game units} (1000 a tile), {@code 1/10000 elixir}, {@code elixir} (whole elixir), {@code hit
  * points}, {@code percent}, {@code level} (counted from 1), {@code count}, {@code index} (counted
  * from 0), {@code bool} (0 or 1), {@code vocabulary id} (the metadata's vocabulary), {@code buff
  * id} (the metadata's buff list), {@code seat id} (a seat's first-sight id, {@link SeatIds}),
- * {@code battle id} (the battle's own entity id), {@code enum:<name>} (a code: {@code enum:refusal}
- * the schema's {@code refusal_names}, {@code enum:state} its {@code state_names}, {@code
- * enum:play_kind} its {@code play_kind_names}; the others the {@link Schema} codes) or {@code
- * flags:<name>} (bits: {@code flags:entity} the schema's {@code flag_names}, {@code flags:play} its
- * {@code play_flag_names}, {@code flags:slot} the deck slot flags {@link Schema#SLOT_EVOLUTION} and
- * {@link Schema#SLOT_HERO}). The frame is {@code game} or {@code seat} (or {@code enemy_seat} for
- * an alias) for a coordinate or a move in game units, {@code none} for every other field.
+ * {@code battle id} (the battle's own entity id), {@code enum:<name>} (a code, its labels by value
+ * in the registry's {@code enums} under the name, keyed by value) or {@code flags:<name>} (bits,
+ * their labels in {@code enums} under the name, keyed by bit index; {@link #enums()}). The frame is
+ * {@code game} or {@code seat} (or {@code enemy_seat} for an alias) for a coordinate or a move in
+ * game units, {@code none} for every other field.
  *
  * <p>The version. Adding a field moves the minor version; renaming or removing one, or moving its
  * meaning, moves the major version. A reader states the version it needs and refuses another major
@@ -93,6 +103,9 @@ public final class Fields {
 
   /** The rows of the exported entity table. */
   public static final int ENTITY_CAPACITY = 256;
+
+  /** {@code entity.side.true} of an entity of neither side. */
+  public static final int SIDE_NEITHER = 2;
 
   /** The seats a seat field's leading axis counts. */
   private static final int SEATS = 2;
@@ -171,7 +184,13 @@ public final class Fields {
    *     than the header ({@link Schema#headerFields()})
    * @param indices the v4 indices
    */
-  public record V4Source(boolean entity, List<Integer> indices) {}
+  public record V4Source(boolean entity, List<Integer> indices) {
+
+    /** The region of the v4 observation the indices are of, as the metadata names it. */
+    public String region() {
+      return entity ? "entity" : "header";
+    }
+  }
 
   // The registration, in declaration order: every field below takes the next integers of the block.
 
@@ -725,7 +744,7 @@ public final class Fields {
   public static final Field ENTITY_KIND_TRUE =
       hiddenEntity("entity.kind.true", "enum:entity_kind", Frame.NONE);
 
-  /** The game side the entity is of. */
+  /** The game side the entity is of, 0 or 1, or {@link #SIDE_NEITHER} for neither side's. */
   public static final Field ENTITY_SIDE_TRUE =
       hiddenEntity("entity.side.true", "enum:side", Frame.NONE);
 
@@ -952,9 +971,129 @@ public final class Fields {
   }
 
   /**
+   * The labels of every code and bit the fields' units name, by the name after {@code enum:} or
+   * {@code flags:}: an enum's labels keyed by code value, a flags' labels keyed by bit index (bit k
+   * is the value {@code 1 << k}), each giving only the codes or bits defined, in ascending order.
+   * -1, a field's unknown or none, is never listed. The labels come from the codes' own constants
+   * and lists.
+   */
+  public static Map<String, SortedMap<Integer, String>> enums() {
+    Map<String, SortedMap<Integer, String>> enums = new TreeMap<>();
+    enums.put(
+        "ability_refusal",
+        byValue(
+            AbilityCommand.OK, "none",
+            AbilityCommand.NOT_CHAMPION, "not_champion",
+            AbilityCommand.CLONE, "clone",
+            AbilityCommand.KING_GONE, "king_gone",
+            AbilityCommand.COOLDOWN, "cooldown",
+            AbilityCommand.NO_CHAMPION, "no_champion",
+            AbilityCommand.PENDING, "pending",
+            AbilityCommand.FROZEN, "frozen",
+            AbilityCommand.DISABLED, "disabled",
+            AbilityCommand.NO_CHARGES, "no_charges",
+            AbilityCommand.ELIXIR, "elixir"));
+    enums.put("ability_state", byIndex(ChampionController.stateNames()));
+    enums.put(
+        "entity_kind",
+        byValue(
+            Schema.KIND_CHARACTER, "character",
+            Schema.KIND_TOWER, "tower",
+            Schema.KIND_PROJECTILE, "projectile",
+            Schema.KIND_AREA, "area"));
+    enums.put(
+        "form", byValue(0, "plain", Schema.FORM_EVOLVED, "evolved", Schema.FORM_HERO, "hero"));
+    enums.put("play_kind", byIndex(Schema.playKindNames()));
+    enums.put("refusal", byIndex(Schema.refusalNames()));
+    // As the packer numbers an entity's side from the seat's.
+    enums.put("relative_side", byValue(0, "own", 1, "enemy", 2, "neither"));
+    enums.put(
+        "result",
+        byValue(
+            Schema.RUNNING,
+            "running",
+            Schema.WON,
+            "won",
+            Schema.LOST,
+            "lost",
+            Schema.DRAW,
+            "draw"));
+    enums.put(
+        "run_refusal",
+        byValue(
+            0,
+            "none",
+            LadderMatch.OVER,
+            "over",
+            LadderMatch.KING_DEAD,
+            "king_dead",
+            LadderMatch.NOT_IN_HAND,
+            "not_in_hand",
+            LadderMatch.START_COOLDOWN,
+            "start_cooldown",
+            LadderMatch.NOT_ENOUGH_ELIXIR,
+            "not_enough_elixir",
+            Schema.RUN_NOT_PLACED,
+            "not_placed"));
+    enums.put(
+        "section_type",
+        byValue(
+            BattleTimeline.NORMAL, "normal",
+            BattleTimeline.OVERTIME, "overtime",
+            BattleTimeline.BONUS_TIME, "bonus_time"));
+    enums.put("side", byValue(0, "side_0", 1, "side_1", SIDE_NEITHER, "neither"));
+    enums.put("state", byIndex(Schema.stateNames()));
+    // The flags, by bit.
+    enums.put("entity", byIndex(Schema.flagNames()));
+    enums.put("play", byIndex(Schema.playFlagNames()));
+    enums.put("slot", byBit(Schema.SLOT_EVOLUTION, "evolution", Schema.SLOT_HERO, "hero"));
+    return Collections.unmodifiableMap(enums);
+  }
+
+  /** Labels keyed by value from value and label pairs. */
+  private static SortedMap<Integer, String> byValue(Object... pairs) {
+    SortedMap<Integer, String> labels = new TreeMap<>();
+    for (int k = 0; k < pairs.length; k += 2) {
+      int value = (Integer) pairs[k];
+      if (labels.put(value, (String) pairs[k + 1]) != null) {
+        throw new IllegalStateException("code " + value + " labelled twice");
+      }
+    }
+    return Collections.unmodifiableSortedMap(labels);
+  }
+
+  /** Labels keyed by their index in a names list, its gaps (nulls) left out. */
+  private static SortedMap<Integer, String> byIndex(List<String> names) {
+    SortedMap<Integer, String> labels = new TreeMap<>();
+    for (int k = 0; k < names.size(); k++) {
+      if (names.get(k) != null) {
+        labels.put(k, names.get(k));
+      }
+    }
+    return Collections.unmodifiableSortedMap(labels);
+  }
+
+  /** Labels keyed by bit index from single-bit flag and label pairs. */
+  private static SortedMap<Integer, String> byBit(Object... pairs) {
+    Object[] byValue = pairs.clone();
+    for (int k = 0; k < pairs.length; k += 2) {
+      int flag = (Integer) pairs[k];
+      if (Integer.bitCount(flag) != 1) {
+        throw new IllegalStateException("flag " + flag + " is not one bit");
+      }
+      byValue[k] = Integer.numberOfTrailingZeros(flag);
+    }
+    return byValue(byValue);
+  }
+
+  /**
    * The registry as the vector's metadata publishes it ({@code fields}): the version, the block's
-   * integers, the entity table's capacity and every field's name, offset, shape, tag, units, frame
-   * and the field it aliases (null for none).
+   * integers, the entity table's capacity, the labels of the codes and bits ({@code enums}, {@link
+   * #enums()}: per name an object from the code value, or the bit index of a flags' name, written
+   * as a string, to its label, the defined ones only in ascending order) and every field's name,
+   * offset, shape, tag, units, frame, the field it aliases (null for none) and its v4 source
+   * ({@code v4}: the region, {@code header} or {@code entity}, and the v4 index of each element
+   * past the seat and row axes, {@link #v4Source}; null for none).
    */
   public static ObjectNode toNode() {
     JsonNodeFactory json = JsonNodeFactory.instance;
@@ -962,6 +1101,13 @@ public final class Fields {
     node.put("version", VERSION);
     node.put("ints", INTS);
     node.put("entity_capacity", ENTITY_CAPACITY);
+    ObjectNode enums = node.putObject("enums");
+    enums()
+        .forEach(
+            (name, labels) -> {
+              ObjectNode codes = enums.putObject(name);
+              labels.forEach((code, label) -> codes.put(Integer.toString(code), label));
+            });
     ArrayNode list = node.putArray("fields");
     for (Field field : FIELDS) {
       ObjectNode item = list.addObject();
@@ -973,6 +1119,15 @@ public final class Fields {
       item.put("units", field.units());
       item.put("frame", field.frame().json());
       item.put("alias_of", field.aliasOf());
+      V4Source source = V4.get(field.name());
+      if (source == null) {
+        item.putNull("v4");
+      } else {
+        ObjectNode v4 = item.putObject("v4");
+        v4.put("region", source.region());
+        ArrayNode indices = v4.putArray("indices");
+        source.indices().forEach(indices::add);
+      }
     }
     return node;
   }
