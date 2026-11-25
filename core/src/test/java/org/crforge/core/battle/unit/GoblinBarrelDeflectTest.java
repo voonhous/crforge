@@ -31,7 +31,8 @@ import org.junit.jupiter.api.Test;
  * The Goblin Barrel turned around by an enemy Monk's Deflect. The barrel is cast by its king tower,
  * its root, and has no target nor a deflection behaviour: a deflection sends it, as it does a
  * spell-like projectile without a target, at the enemy crown tower nearest the Deflect, with no
- * target, for the Monk's side. Its impact there makes its Goblins for the Monk's side.
+ * target, for the Monk's side. Its impact there makes its Goblins for the Monk's side. Turned, its
+ * root is that Monk: an enemy Monk's Deflect that meets it again sends it back at the first Monk.
  */
 class GoblinBarrelDeflectTest {
 
@@ -239,17 +240,74 @@ class GoblinBarrelDeflectTest {
 
   @Test
   @DisplayName(
-      "a Goblin Barrel already deflected that meets an enemy Deflect again is refused: its second"
-          + " turn-around, back at the Monk that turned it, is held by no recording")
-  void barrelDeflectedTwiceIsRefused() {
+      "a Goblin Barrel already deflected that meets an enemy Deflect again is sent back at the Monk"
+          + " that turned it, its target, for the second Monk's side; a third turn ends its flight"
+          + " and it lands nowhere")
+  void barrelDeflectedAgainIsSentBackAtTheMonkThatTurnedIt() {
     Scene scene = new Scene();
     // The bottom Monk stands by the enemy's left princess tower; the enemy's Monk stands between it
     // and that tower, where the turned barrel passes low on its way to the tower.
     CharacterEntity bottom = scene.monkWithDeflect(0, 3500, 23300);
     WorldEntity tower = scene.nearestCrownTower(1, 3500, 23300);
     int topY = (23300 + tower.getView().getY()) / 2;
-    scene.monkWithDeflect(1, tower.getView().getX(), topY);
+    CharacterEntity top = scene.monkWithDeflect(1, tower.getView().getX(), topY);
     scene.castBarrel(1, 3500, 23300);
+    while (scene.deflections.size() < 2) {
+      scene.step();
+    }
+    assertThat(scene.deflections.get(0).parent()).isSameAs(bottom);
+    Deflection again = scene.deflections.get(1);
+    ProjectileEntity barrel = again.projectile();
+    assertThat(barrel.getData().name()).isEqualTo(BARREL);
+    assertThat(again.parent()).isSameAs(top);
+    assertThat(again.source()).as("sent back at the Monk that turned it").isSameAs(bottom);
+    assertThat(again.side()).isEqualTo(top.side());
+    assertThat(again.target()).isSameAs(bottom);
+    assertThat(again.aimX()).isEqualTo(bottom.getView().getX());
+    assertThat(again.aimY()).isEqualTo(bottom.getView().getY());
+    assertThat(barrel.isReleased()).isFalse();
+    // The bottom Monk's Deflect is still up: it turns the barrel a third time, past the most a
+    // projectile takes, which ends its flight; it lands nowhere and makes no Goblins.
+    while (!barrel.isReleased()) {
+      scene.step();
+    }
+    assertThat(scene.deflections).hasSize(3);
+    assertThat(scene.deflections.get(2).parent()).isSameAs(bottom);
+    assertThat(barrel.getDeflections())
+        .isEqualTo(scene.match.getWorld().globalNumber("MAX_DEFLECTION_TIMES") + 1);
+    for (int i = 0; i < 40; i++) {
+      scene.step();
+    }
+    assertThat(scene.spawned).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "a Goblin Barrel turned by a Monk that has left the battle, met by an enemy Deflect, is"
+          + " refused: its finish without a root owner is held by no recording for the barrel")
+  void barrelDeflectedAgainWithoutItsRootIsRefused() {
+    Scene scene = new Scene();
+    // The bottom Monk stands farther from the enemy's left princess tower, the enemy's Monk just
+    // in front of the tower: the turned barrel flies a while before it reaches the second Deflect.
+    CharacterEntity bottom = scene.monkWithDeflect(0, 3500, 19000);
+    WorldEntity tower = scene.nearestCrownTower(1, 3500, 19000);
+    scene.monkWithDeflect(1, tower.getView().getX(), tower.getView().getY() - 2000);
+    scene.castBarrel(1, 3500, 19000);
+    while (scene.deflections.isEmpty()) {
+      scene.step();
+    }
+    ProjectileEntity barrel = scene.deflections.get(0).projectile();
+    assertThat(barrel.getRoot()).isSameAs(bottom);
+    // The Monk that turned it leaves at once: the barrel flies on without a root owner. Its Deflect
+    // cuts the damage it takes, a kill's too, so kills of its whole hit points are queued until
+    // their sum gets through.
+    for (int i = 0; i < 20; i++) {
+      scene.match.getWorld().getHits().kill(bottom, null);
+    }
+    while (barrel.getRoot() != null) {
+      scene.step();
+    }
+    assertThat(scene.deflections).hasSize(1);
     assertThatThrownBy(
             () -> {
               while (scene.deflections.size() < 2) {
@@ -260,7 +318,6 @@ class GoblinBarrelDeflectTest {
         .hasMessageContaining("(" + BARREL + ") flies within")
         .hasMessageContaining("whose deflection of it is not modelled");
     assertThat(scene.deflections).hasSize(1);
-    assertThat(scene.deflections.get(0).parent()).isSameAs(bottom);
   }
 
   /**
