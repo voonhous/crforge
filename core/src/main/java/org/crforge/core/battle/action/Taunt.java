@@ -36,9 +36,12 @@ import org.crforge.core.fidelity.FidelityStatus;
  * air, the owner's air attack; on the ground, or in the air only because FORCE_IS_AIR holds it
  * there (a ground unit an uppercut or a knock lifted), its ground attack or no air attack.
  *
+ * <p>A unit routing across underground, as a Mighty Miner whose lane switch fires on the step the
+ * hero Knight's hit reaches it, is taunted as any unit, and the run's next step lets it go.
+ *
  * <p>Refused rather than guessed, as the row is built: the end by a stun and the visual effect. As
- * it starts: a taunted unit that rides on another or carries riders, or that is in a pathfinding
- * state, and a forced object not in the battle.
+ * it starts: a taunted unit that rides on another or carries riders, or that tunnels to its
+ * placement or routes across visible, and a forced object not in the battle.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -56,9 +59,14 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " step out of reach, forced again within it) and an Inferno Tower from within it,"
             + " held by recordings of the game. The arming's invalid branch, the falloff"
             + " on a lost reach, the re-arm and the run ending as its forced object leaves are"
-            + " translated but held by no run. Refused: the end by a stun, the visual effect, a"
-            + " taunted rider, carrier or pathfinding unit, and a forced object not in the"
-            + " battle. A forced object in the air is judged by the owner's air attack unless"
+            + " translated but held by no run. A start on a unit routing across underground, a"
+            + " Mighty Miner whose lane switch fires on the step the hero Knight's hit reaches"
+            + " it: the start and the arming read no pathfinding state and the next step lets it"
+            + " go, settled line for line on game client 16.635.13; held by"
+            + " taunt_on_switch_step_knight and taunt_on_switch_step_tower, played to the end."
+            + " Refused: the end by a stun, the visual effect, a taunted rider or carrier, a unit"
+            + " tunnelling to its placement or routing across visible, and a forced object not"
+            + " in the battle. A forced object in the air is judged by the owner's air attack unless"
             + " FORCE_IS_AIR holds it there: settled line for line; recorded"
             + " battles where the Goblin Demolisher, lifted by an uppercut, is taunted onto itself"
             + " play on with it, though they do not tell it from the ground rule.")
