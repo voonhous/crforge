@@ -136,7 +136,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   - a taunt with any column but its valid duration and buff, or longer than one step
   - a taunted rider or carrier
-  - a taunt that starts on a pathfinding unit, or steps on one routing across visible (a step on an underground unit, as a Mighty Miner switching lanes, lets it go at once)
+  - a taunt that starts on a unit tunnelling to its placement or routing across visible, or steps on one routing across visible. A taunt that starts on a unit routing across underground arms as on any unit; that happens only when the hero Knight's hit reaches a Mighty Miner still casting on the step its lane switch fires, as the taunt runs later in that step. A step on an underground unit, as a Mighty Miner switching lanes, lets it go at once
   - an object to force onto that is not in the battle
   - a following area effect placed by no action, or one that chains another or pulls
   - one hit per target without a hit action

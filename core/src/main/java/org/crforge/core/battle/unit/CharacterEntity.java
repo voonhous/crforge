@@ -1594,17 +1594,23 @@ public class CharacterEntity extends WorldEntity {
    * <p>An object to force onto that flies is taunted onto as any other; the arming judges it by the
    * ground rule while FORCE_IS_AIR holds it in the air (see {@link TauntRun#arm}).
    *
-   * <p>Refused rather than guessed: a unit or one of its riders in a pathfinding state, a rider
-   * that already lists a run of the same row, and an object to force onto that is not in the
-   * battle. The arming reads no pathfinding state, and a run's step lets an underground unit go at
-   * once (see {@link TauntRun#update}), but no recording holds a taunt that starts on a unit in
-   * either pathfinding state; the hero Knight's taunting area passes underground units by.
+   * <p>A unit routing across underground, as a Mighty Miner switching lanes, is taunted as any
+   * unit: the arming reads no pathfinding state, and the run's next step lets it go at once (see
+   * {@link TauntRun#update}). The hero Knight's taunting area passes underground units by, so this
+   * happens only when its hit reaches a Mighty Miner still casting on the step its lane switch
+   * fires: the hit's taunt is queued and runs after the switch, later in the same step.
+   *
+   * <p>Refused rather than guessed: a unit tunnelling to its placement or routing across visible,
+   * or a rider in a pathfinding state, which no recording holds; a rider that already lists a run
+   * of the same row; and an object to force onto that is not in the battle.
    */
   @Override
   public ActionInstance taunt(Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
     String refused = null;
-    if (pathfinding() || riders().stream().anyMatch(CharacterEntity::pathfinding)) {
-      refused = "a pathfinding unit, which";
+    if (tunnelling() || ingamePathfinding() && getData().ingamePathfindVisible()) {
+      refused = "a unit tunnelling to its placement or routing across visible, which";
+    } else if (riders().stream().anyMatch(CharacterEntity::pathfinding)) {
+      refused = "a unit with a rider in a pathfinding state, which";
     } else if (riders().stream().anyMatch(rider -> rider.listsRunOf(action))) {
       refused = "a rider that lists a run of it already, which";
     } else if (!(forced instanceof WorldEntity)) {
@@ -1628,7 +1634,7 @@ public class CharacterEntity extends WorldEntity {
     return run;
   }
 
-  /** Whether the unit is in a pathfinding state, which a taunt does not model. */
+  /** Whether the unit is in a pathfinding state, which a taunt on its carrier does not model. */
   private boolean pathfinding() {
     int state = getView().getState();
     return state == GridEntityState.SPAWN_PATHFIND || state == GridEntityState.INGAME_PATHFIND;
