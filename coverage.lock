@@ -5,5 +5,5 @@
 # set reaches CI when this file moves.
 # - revision: the dataset commit CI downloads the sets from.
 # - versions: the data versions with a coverage set at that revision, separated by spaces.
-revision=bf1406dc4dd2d77e968f74ee2cc10f45b05e53e1
+revision=a426cca476df61443d2d32ff2252626449f9d861
 versions=16.635.8
