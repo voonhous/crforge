@@ -48,7 +48,8 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " root owner turned at its start and finished, a spell-like one too (the evolved"
             + " Cannon's bomb met at its arrival after its area effect left), a rider's shot sent"
             + " at its carrier, a volley turned as one or each projectile on its own, a hook ended"
-            + " where it is, a Goblin Barrel turned again sent back at the parent that turned it,"
+            + " where it is, on its way or pulling what it hooked, a Goblin Barrel turned again"
+            + " sent back at the parent that turned it,"
             + " and a turn past MAX_DEFLECTION_TIMES ending the flight; held by the reference"
             + " battles of the deflect corpora: arrows-deflect-v1, barbloghero-deflect-v1,"
             + " barrel-king-deflect-v1, body-deflect-v1, bomber-evolved-deflect-v1,"
@@ -56,6 +57,7 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " deflect-enchant-copy-v1,"
             + " deflect-end-poison-v1, deflect-no-root-v1, deflect-rider-shot-v1,"
             + " deflect-source-left-v1, firecracker-deflect-v1, fisherman-deflect-v1,"
+            + " fisherman-hooked-deflect-v1,"
             + " goblin-barrel-deflect-v1, goblin-barrel-redeflect-v1, hunter-deflect-v1,"
             + " hunter-ev1-net-deflect-v1,"
             + " king-shot-deflect-captured-v1, log-deflect-v1, magic-archer-deflect-v1,"
@@ -369,8 +371,7 @@ public final class ProjectileDeflection {
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
    * one with a deflection behaviour, a box body; one with a deflect radius that spawns a character
    * at its impact, as the Goblin Barrel, deflected before by a parent that has since left, whose
-   * rootless finish no recording holds; one that hops or homes for a time; a hook already pulling
-   * what it hooked, which a deflection would let go, as no recording holds; one that flies to a
+   * rootless finish no recording holds; one that hops or homes for a time; one that flies to a
    * point and does not stop at collisions with a least distance, a box body or a deflect radius,
    * which no recording holds; one whose impact spawns a chain of projectiles two links or more
    * long, as the evolved Bomber's bouncing bomb; one that belongs to a chain and is not spell-like.
@@ -391,9 +392,9 @@ public final class ProjectileDeflection {
    * target, and a row that homes for a time homes on the root owner again (see {@link
    * ProjectileEntity#deflect}); turned, it hits what its body passes on its way back.
    *
-   * <p>So is a hook on its way to its target, as the Fisherman's: a deflection does not turn it but
-   * ends its flight where it is (see {@link ProjectileEntity#deflect}), so the time it homes for is
-   * never read again.
+   * <p>So is a hook, as the Fisherman's, on its way to its target or already pulling what it
+   * hooked: a deflection does not turn it but ends its flight where it is (see {@link
+   * ProjectileEntity#deflect}), so the time it homes for is never read again.
    *
    * <p>A deflect radius is no bar otherwise: it widens the deflection pass's reach (see {@link
    * #deflectPass}) and nothing the deflection itself reads, as the Princess's arrows have. Nor is a
@@ -474,7 +475,6 @@ public final class ProjectileDeflection {
         || data.chainedHitRadius() >= 1
         || (data.homingLike() && !pingpong && !rolling && !data.checkCollisions() && !piercing)
         || (data.homingTimeMs() >= 1 && !piercing && !hooking)
-        || (hooking && projectile.isHooked())
         || (data.spawnProjectile() != null && data.spawnAxisY())
         || (projectile.getChain() != null && !spellLike)) {
       throw new UnsupportedOperationException(
@@ -575,7 +575,11 @@ public final class ProjectileDeflection {
    * parent takes its damage as above (it has none), and its flight ends where it is, still its
    * owner's, for his side and aimed at its target, its deflections uncounted. It leaves at the next
    * cleanup without hooking anything; its action on reaching its target is scheduled, as a release
-   * schedules it. The observers hear of it as sent at nothing.
+   * schedules it. The observers hear of it as sent at nothing. A hook already pulling a troop it
+   * hooked ends the same way, and its end lets go of neither the troop nor its owner: the troop,
+   * finding nothing to follow on the next step, stands where the hook left it, and the owner, who
+   * waited for the pull, goes on once the hook no longer holds him. A hook standing at a building
+   * while it drags its owner is never asked by a Deflect: its step moves only the owner.
    *
    * <p>A projectile without a root owner, its shooter gone - the Witch's or the Little Prince's
    * shot, a princess tower's arrow after the tower fell - is not sent back: no gate and no search.
