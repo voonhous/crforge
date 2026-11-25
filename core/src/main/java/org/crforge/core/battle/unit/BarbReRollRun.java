@@ -36,13 +36,19 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " The turn over to the facing summoner's side as the run sees a new deflection"
             + " count, and the deflected action, its cause that summoner, as a roll turned an odd"
             + " number of times ends; held by reroll_deflected_t316 and reroll_deflected_t327."
-            + " Refused: a turn over to a side whose champion slot follows the same ability.")
+            + " The turn back to the hero's side by a deflector of each side, and the turn over"
+            + " to a side whose slot holds the hero's row from the deck and follows no play,"
+            + " which then follows it; held by reroll_twice_t316, reroll_twice_t327 and"
+            + " reroll_turned_to_idle_slot_t316.")
 final class BarbReRollRun extends ActionInstance {
 
   /** Milliseconds one step takes off the counter. */
   private static final int STEP_MS = 50;
 
-  /** The deploy index of a unit no card play made, which no champion slot follows. */
+  /**
+   * The deploy index a summoner carries, the play of a unit no card play made: a slot that follows
+   * a play never follows it, one that follows none yet does.
+   */
   private static final int NO_PLAY = -1;
 
   /** The lock channel the run asks on, and the priority and flags of its request. */
@@ -122,31 +128,17 @@ final class BarbReRollRun extends ActionInstance {
 
   /**
    * The barbarian taken over as its projectile was turned: it takes the side of the summoner facing
-   * its own, that summoner's cast and no play, so no champion slot follows it from then on. Nothing
-   * else changes: it goes on rolling where the projectile is, its runs, target lock and row kept.
+   * its own, that summoner's cast and its play. A summoner carries no play, so the barbarian
+   * carries none from then on: no slot that follows a play follows it, and a slot of its new side
+   * that holds its ability's champion but follows no play yet (one the deck gave it) does, as it
+   * would any copy of that champion no play made. A turn back to the barbarian's first side is the
+   * same take over, so its own slot, which follows the play that made it, lets it go. Nothing else
+   * changes: it goes on rolling where the projectile is, its runs, target lock and row kept.
    *
-   * <p>Refused: a battle with no summoner on the other side, and a side whose champion slot follows
-   * the barbarian's ability, where which copy the slot follows would rest on the play the barbarian
-   * carries over, the summoner's, which no recording holds.
+   * <p>Refused: a battle with no summoner on the other side.
    */
   private void turnOver() {
     TowerEntity summoner = facingSummoner();
-    AbilityData ability = unit.getData().ability();
-    for (int slot = 1; slot <= 2 && ability != null; slot++) {
-      ChampionController controller = summoner.championSlot(slot);
-      UnitData followed = controller == null ? null : controller.getChampion();
-      if (followed != null
-          && followed.ability() != null
-          && followed.ability().name().equals(ability.name())) {
-        throw new UnsupportedOperationException(
-            row.name()
-                + "'s "
-                + projectile.getData().name()
-                + " is turned over to a side whose champion slot follows "
-                + ability.name()
-                + ", which is not modelled");
-      }
-    }
     unit.getView().setSide(summoner.side());
     unit.setCastId(summoner.castId());
     unit.setDeployIndex(NO_PLAY);
@@ -197,7 +189,9 @@ final class BarbReRollRun extends ActionInstance {
     if (projectile == null || projectile.getId() != leftId) {
       return;
     }
-    // A roll turned an odd number of times ends on the other side.
+    // The projectile's own count, not the one the run last saw: a turn past the most a projectile
+    // takes ends its flight on that step, so a barrel turned three times ends with the barbarian
+    // still on the side the second turn gave it, the count odd all the same.
     boolean turned = projectile.getDeflections() >= 1 && (projectile.getDeflections() & 1) != 0;
     projectile = null;
     BarbBarrelHeroReRoll.Columns columns = row.getColumns();
