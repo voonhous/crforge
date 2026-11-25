@@ -7,7 +7,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -822,7 +821,9 @@ class BattleFishermanTest {
 
   @Test
   @DisplayName(
-      "a pulled troop another then holds a lock on, on the step the hook arrives back, is refused")
+      "a pulled troop another then holds a lock on, on the step the hook arrives back, is let go"
+          + " and the hook ends as an ordinary arrival, landing at its aim; the troop stands and the"
+          + " Fisherman waits until he starts an attack")
   void aPulledTroopLockedAsItArrives() {
     // The same scene played without the lock gives the step the hook arrives back on.
     Scene probe = new Scene();
@@ -839,12 +840,29 @@ class BattleFishermanTest {
     CharacterEntity held = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
     CharacterEntity holder = farOff(scene);
     scene.step(arrival);
-    assertThat(scene.hooks.get(0).isHooked()).isTrue();
-    assertThat(scene.hooks.get(0).isReleased()).isFalse();
+    ProjectileEntity hook = scene.hooks.get(0);
+    assertThat(hook.isHooked()).isTrue();
+    assertThat(hook.isReleased()).isFalse();
     hold(scene, holder, held);
-    assertThatThrownBy(() -> scene.step(1))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("on the step it arrives back");
+    scene.step(1);
+    // Let go as on any hooked step: no longer followed, the hook released.
+    assertThat(hook.isReleased()).isTrue();
+    assertThat(held.getUnit().timers().getFollowTarget()).isNull();
+    // Then, with the lock's answer, the arrival is an ordinary one: the hook lands at its aim,
+    // where
+    // the hooked arrival of the probe was released where it stood.
+    assertThat(hook.getX()).isEqualTo(hook.getAimX());
+    assertThat(hook.getY()).isEqualTo(hook.getAimY());
+    assertThat(probed.getX() != probed.getAimX() || probed.getY() != probed.getAimY()).isTrue();
+    // Nothing asks a state of the troop or the Fisherman in that step: the troop, with nothing to
+    // follow, stands; the Fisherman stays in his waiting state until he starts an attack, here on
+    // the next step, the troop pulled within his range.
+    assertThat(scene.states.stream().filter(s -> s.startsWith(scene.tick - 1 + " "))).isEmpty();
+    assertThat(held.getView().getState()).isEqualTo(GridEntityState.STANDING);
+    assertThat(scene.fisherman.getView().getState()).isEqualTo(GridEntityState.COMPONENTS_DISABLED);
+    scene.step(1);
+    assertThat(scene.fisherman.getView().getState())
+        .isNotEqualTo(GridEntityState.COMPONENTS_DISABLED);
   }
 
   /** A Knight far off on the other half, out of everyone's sight: a lock's holder. */

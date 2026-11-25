@@ -543,6 +543,8 @@
   "hit-area-gate-v1/ahg_bandit_t163": {"outcome": "diagnostic_match"},
   "hit-area-gate-v1/ahg_control_t132": {"outcome": "diagnostic_match"},
   "hit-area-gate-v1/ahg_control_t134": {"outcome": "diagnostic_match"},
+  "hook-letgo-arrival-v1/hook_letgo_at_arrival_a1": {"outcome": "diagnostic_match"},
+  "hook-letgo-arrival-v1/hook_letgo_at_arrival_a2": {"outcome": "diagnostic_match"},
   "hook-locked-edges-v1/hook_after_lock_t1162": {"outcome": "diagnostic_match"},
   "hook-locked-edges-v1/hook_after_lock_t1163": {"outcome": "diagnostic_match"},
   "hook-locked-edges-v1/hooked_pulled_held_t1249": {"outcome": "diagnostic_match"},
