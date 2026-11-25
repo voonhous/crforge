@@ -49,7 +49,8 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " Cannon's bomb met at its arrival after its area effect left), a rider's shot sent"
             + " at its carrier, a volley turned as one or each projectile on its own, a hook ended"
             + " where it is, on its way or pulling what it hooked, a Goblin Barrel turned again"
-            + " sent back at the parent that turned it,"
+            + " sent back at the parent that turned it, or turned at its start and finished once"
+            + " that parent has left,"
             + " and a turn past MAX_DEFLECTION_TIMES ending the flight; held by the reference"
             + " battles of the deflect corpora: arrows-deflect-v1, barbloghero-deflect-v1,"
             + " barrel-king-deflect-v1, body-deflect-v1, bomber-evolved-deflect-v1,"
@@ -58,7 +59,8 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " deflect-end-poison-v1, deflect-no-root-v1, deflect-rider-shot-v1,"
             + " deflect-source-left-v1, firecracker-deflect-v1, fisherman-deflect-v1,"
             + " fisherman-hooked-deflect-v1,"
-            + " goblin-barrel-deflect-v1, goblin-barrel-redeflect-v1, hunter-deflect-v1,"
+            + " goblin-barrel-deflect-v1, goblin-barrel-redeflect-v1,"
+            + " goblin-barrel-rootless-redeflect-v1, hunter-deflect-v1,"
             + " hunter-ev1-net-deflect-v1,"
             + " king-shot-deflect-captured-v1, log-deflect-v1, magic-archer-deflect-v1,"
             + " monk-deflect-buff-v1, the pingpong-deflect corpora, princess-deflect-v1,"
@@ -369,14 +371,12 @@ public final class ProjectileDeflection {
 
   /**
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
-   * one with a deflection behaviour, a box body; one with a deflect radius that spawns a character
-   * at its impact, as the Goblin Barrel, deflected before by a parent that has since left, whose
-   * rootless finish no recording holds; one that hops or homes for a time; one that flies to a
-   * point and does not stop at collisions with a least distance, a box body or a deflect radius,
-   * which no recording holds; one whose impact spawns a chain of projectiles two links or more
-   * long, as the evolved Bomber's bouncing bomb; one that belongs to a chain and is not spell-like.
-   * A spell such as the Fireball, whose deflection behaviour sends it at the enemy nearest the area
-   * effect without a target, is among them.
+   * one with a deflection behaviour, a box body; one that hops or homes for a time; one that flies
+   * to a point and does not stop at collisions with a least distance, a box body or a deflect
+   * radius, which no recording holds; one whose impact spawns a chain of projectiles two links or
+   * more long, as the evolved Bomber's bouncing bomb; one that belongs to a chain and is not
+   * spell-like. A spell such as the Fireball, whose deflection behaviour sends it at the enemy
+   * nearest the area effect without a target, is among them.
    *
    * <p>A projectile that flies to a point and stops at collisions is modelled, as the Hunter's
    * pellets are: its relaunch aims at its root owner's position itself, not stretched to its range,
@@ -411,6 +411,11 @@ public final class ProjectileDeflection {
    * of the parent turning it now, and lands on it, its children made for that side. A third turn,
    * past the most a projectile takes (MAX_DEFLECTION_TIMES), ends its flight, so it lands nowhere
    * and makes no children.
+   *
+   * <p>Nor once that parent has left the battle: it has no root then, so it goes the way of any
+   * projectile without a root owner (see {@link #deflect}), turned at its start - where the parent
+   * turned it - for the side of the parent turning it now, and finished, so it lands nowhere and
+   * makes no children.
    *
    * <p>A deflection behaviour that only ignores the height is no bar, as the Royal Giant's shot
    * has: it changes the deflection pass's measure (see {@link #deflectPass}) and nothing the
@@ -466,11 +471,6 @@ public final class ProjectileDeflection {
     // Ignoring the height changes only the deflection pass's measure: nothing after it reads it.
     int behaviour = data.deflectBehaviour() & ~ProjectileData.IGNORE_HEIGHT;
     if ((behaviour != 0 && !spellLike && !rolling)
-        || (data.deflectRadius() != 0
-            && !spellLike
-            && data.spawnCharacter() != null
-            && projectile.getDeflections() >= 1
-            && projectile.getRoot() == null)
         || (data.projectileRadiusY() != 0 && !rolling)
         || data.chainedHitRadius() >= 1
         || (data.homingLike() && !pingpong && !rolling && !data.checkCollisions() && !piercing)
@@ -590,7 +590,9 @@ public final class ProjectileDeflection {
    * rage where it would have landed. A spell-like projectile goes the same way: the evolved
    * Cannon's bomb lands on the step after its area effect leaves, and a Deflect that reaches it
    * only then, at its arrival, finds it without a root owner; it is turned where it was dropped and
-   * lands on nothing, no buff and no pushback.
+   * lands on nothing, no buff and no pushback. So does a Goblin Barrel, the evolved one or its
+   * decoy, turned again after the parent that turned it first has left: turned where that parent
+   * turned it and finished, it makes no children.
    *
    * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
    * that follows nothing, a projectile an area effect launched that was not dropped onto it. A

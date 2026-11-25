@@ -7,7 +7,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.crforge.core.battle.Shipped.actionNames;
 import static org.crforge.core.battle.Shipped.number;
 import static org.crforge.core.battle.Shipped.row;
@@ -32,7 +31,8 @@ import org.junit.jupiter.api.Test;
  * its root, and has no target nor a deflection behaviour: a deflection sends it, as it does a
  * spell-like projectile without a target, at the enemy crown tower nearest the Deflect, with no
  * target, for the Monk's side. Its impact there makes its Goblins for the Monk's side. Turned, its
- * root is that Monk: an enemy Monk's Deflect that meets it again sends it back at the first Monk.
+ * root is that Monk: an enemy Monk's Deflect that meets it again sends it back at the first Monk,
+ * or, once the first Monk has left, turns it where the first Monk turned it and ends its flight.
  */
 class GoblinBarrelDeflectTest {
 
@@ -284,20 +284,25 @@ class GoblinBarrelDeflectTest {
   @Test
   @DisplayName(
       "a Goblin Barrel turned by a Monk that has left the battle, met by an enemy Deflect, is"
-          + " refused: its finish without a root owner is held by no recording for the barrel")
-  void barrelDeflectedAgainWithoutItsRootIsRefused() {
+          + " turned at the point the first Monk turned it, for the second Monk's side, and its"
+          + " flight ends: it lands nowhere and makes no Goblins")
+  void barrelDeflectedAgainWithoutItsRootIsTurnedAtItsStartAndFinished() {
     Scene scene = new Scene();
     // The bottom Monk stands farther from the enemy's left princess tower, the enemy's Monk just
     // in front of the tower: the turned barrel flies a while before it reaches the second Deflect.
     CharacterEntity bottom = scene.monkWithDeflect(0, 3500, 19000);
     WorldEntity tower = scene.nearestCrownTower(1, 3500, 19000);
-    scene.monkWithDeflect(1, tower.getView().getX(), tower.getView().getY() - 2000);
+    CharacterEntity top =
+        scene.monkWithDeflect(1, tower.getView().getX(), tower.getView().getY() - 2000);
     scene.castBarrel(1, 3500, 19000);
     while (scene.deflections.isEmpty()) {
       scene.step();
     }
     ProjectileEntity barrel = scene.deflections.get(0).projectile();
     assertThat(barrel.getRoot()).isSameAs(bottom);
+    // Where the first turn launched it from: its start.
+    int startX = barrel.getStartX();
+    int startY = barrel.getStartY();
     // The Monk that turned it leaves at once: the barrel flies on without a root owner. Its Deflect
     // cuts the damage it takes, a kill's too, so kills of its whole hit points are queued until
     // their sum gets through.
@@ -308,16 +313,24 @@ class GoblinBarrelDeflectTest {
       scene.step();
     }
     assertThat(scene.deflections).hasSize(1);
-    assertThatThrownBy(
-            () -> {
-              while (scene.deflections.size() < 2) {
-                scene.step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("(" + BARREL + ") flies within")
-        .hasMessageContaining("whose deflection of it is not modelled");
-    assertThat(scene.deflections).hasSize(1);
+    while (scene.deflections.size() < 2) {
+      scene.step();
+    }
+    Deflection again = scene.deflections.get(1);
+    assertThat(again.projectile()).isSameAs(barrel);
+    assertThat(again.parent()).isSameAs(top);
+    assertThat(again.source()).as("sent at nothing: it has no root to go back to").isNull();
+    assertThat(again.side()).isEqualTo(top.side());
+    assertThat(again.target()).isNull();
+    assertThat(again.aimX()).isEqualTo(startX);
+    assertThat(again.aimY()).isEqualTo(startY);
+    assertThat(barrel.isReleased()).as("its flight is ended").isTrue();
+    for (int i = 0; i < 40; i++) {
+      scene.step();
+    }
+    assertThat(scene.match.getWorld().getHolder().entities()).doesNotContain(barrel);
+    assertThat(scene.spawned).isEmpty();
+    assertThat(scene.deflections).hasSize(2);
   }
 
   /**
