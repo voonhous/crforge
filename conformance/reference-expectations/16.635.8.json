@@ -57,6 +57,8 @@
   "barbloghero-deflect-v1/herobarrel_t430_y5000": {"outcome": "diagnostic_match"},
   "barbloghero-deflect-v1/herobarrel_t460_y7500": {"outcome": "diagnostic_match"},
   "barrel-centre-v2/goblinbarrel_own_half_centre": {"outcome": "diagnostic_match"},
+  "barrel-king-deflect-v1/barrel_king_deflect": {"outcome": "diagnostic_match"},
+  "barrel-king-deflect-v1/chef_barrel_king_deflect": {"outcome": "diagnostic_match"},
   "battle-ram-evo-v2/battle_ram_evolved_knight_after_20": {"outcome": "diagnostic_match"},
   "battle-ram-evo-v2/battle_ram_evolved_knight_after_50": {"outcome": "diagnostic_match"},
   "battle-ram-evo-v2/battle_ram_evolved_knight_after_80": {"outcome": "diagnostic_match"},
