@@ -210,8 +210,6 @@ final class ProjectileFlight {
       speed = p.getSpeedOverride();
     }
     boolean dragsOwner = false;
-    // Whether this step let a pulled target go, its hook released.
-    boolean letGo = false;
     // Whether an arrival on this step may hook: not when the target keeps out of the hook.
     boolean hookable = true;
     if (drags) {
@@ -229,10 +227,11 @@ final class ProjectileFlight {
         } else {
           if (held) {
             // A pulled target someone else now holds is let go at once: it no longer follows the
-            // hook, which is released, and the step goes on as any hooked step.
+            // hook, which is released, and the step goes on as any hooked step. A step that
+            // arrives back so ends as an ordinary arrival, the lock's answer keeping it from the
+            // hooked one: released again, which changes nothing, it lands at its aim and impacts.
             world.letGoOfHeldTarget(p);
             p.release();
-            letGo = true;
           }
           if (target != null && data.dragBackAsAttractor()) {
             speed = attracted(target, speed, BattleWorld.HOOK_PULL_SPEED_FLOOR);
@@ -254,11 +253,6 @@ final class ProjectileFlight {
       return;
     }
     if (remaining <= speed) {
-      if (letGo) {
-        // Released and arriving back on the same step: the arrival would run on a released hook,
-        // which no reference holds.
-        world.refuseLetGoAtArrival(p);
-      }
       arrive(p, world, hookable);
     } else if (dragsOwner) {
       dragOwner(p, world);

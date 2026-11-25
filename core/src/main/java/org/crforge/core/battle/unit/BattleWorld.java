@@ -706,21 +706,6 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Refuses a hooked projectile that lets its pulled target go, someone else now holding it, on the
-   * step it arrives back: its arrival would then run on a released hook, an ordinary arrival with
-   * its impact, which no reference holds.
-   *
-   * @param projectile the hooked projectile
-   */
-  public void refuseLetGoAtArrival(ProjectileEntity projectile) {
-    throw new UnsupportedOperationException(
-        projectile.name()
-            + " lets "
-            + projectile.getTarget().name()
-            + " go, which another now holds, on the step it arrives back, not modelled");
-  }
-
-  /**
    * A hooking projectile asks a unit's setter for a state: its target to be pulled, its owner to
    * wait or to be dragged, and its owner to move on once dragged; every observer is told.
    *

@@ -1264,7 +1264,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A pulled troop someone else then holds (an evolved Goblin Cage claiming it on the step the hook takes it) is let go at once. On its next step the hook finds the lock: the troop no longer follows it, the hook is released and leaves the battle, and nothing asks a state of anyone. The troop's own state visit, later in that step and with nothing to follow, has it stand; the Fisherman stays in his waiting state until he starts an attack. The recorded reference battles `hook-locked-edges-v1/hook_after_lock_t1162` and `hook_after_lock_t1163` hold the first, `hooked_pulled_held_t1249` and `hooked_pulled_held_t1250` the second.
 
-  Refused: a pulled troop let go so on the step the hook arrives back, whose arrival would run on the released hook.
+  A let-go on the step the hook arrives back (the claim on the step the hook takes a troop pulled for one step only) is the same let-go, and the arrival that follows is an ordinary one, as at a troop held when the hook reaches it: released again, which changes nothing, the hook lands at its aim and impacts. Where the hook lands shows in no battle: it leaves the battle at the end of that step and its impact is on its target. The troop stands and the Fisherman waits until he starts an attack. The recorded reference battles `hook-letgo-arrival-v1/hook_letgo_at_arrival_a1` and `hook_letgo_at_arrival_a2` hold it, a Mini P.E.K.K.A pulled from next to the Fisherman.
 
   A row with a MorphCharacter, which the hook's leaving would morph back into, is refused with its row.
 
