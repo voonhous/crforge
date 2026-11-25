@@ -1176,7 +1176,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A unit whose row pushes or runs an action as its shield breaks, hiding, a buff at a share of its hit points, elixir, a spawner's launches, its second and third characters or its push is refused as it is created.
 
-  A buff scales the spawner's step as it does the speed. The flag that holds a spawner's timer, and the hit-points visit's dedupe expiry and shield tag, are not modelled. A spawned champion is handed over to its side's champion controllers, which do nothing with it, as no ability is modelled.
+  A buff scales the spawner's step as it does the speed. The flag that holds a spawner's timer, and the hit-points visit's dedupe expiry and shield tag, are not modelled. A spawned champion is handed over to its side's champion slots: the slot that follows its row follows the spawned unit's play; else an empty slot, the first before the second, takes its row; else a slot that allows another champion and follows the earlier of the two plays is given it; with none, no slot follows it. A slot that follows a spawned champion runs its ability as for a played one, by its player's command naming the unit: the hero Goblins' banner, which the last goblin's death leaves, and the hero Barbarian Barrel's barbarian, which its rolling barrel lets out, are used so.
 
   A row untargetable when spawned starts every unit of it with a spawned child's immunity, whatever makes it. The Phoenix's egg refuses every character that asks for it until its sixth state visit, while a spell's area or impact still reaches it.
 
