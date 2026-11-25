@@ -22,6 +22,7 @@ import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
@@ -358,5 +359,145 @@ class BattleAbilityTest {
         .hasMessage(
             "Monk casts Deflect, which sets columns the battle does not model:"
                 + " [DashTargetFurthest]");
+  }
+
+  /** The columns of an ability row the gate counts as an effect the ability has. */
+  private static final List<String> EFFECT_COLUMNS =
+      List.of(
+          "OnActivationAction",
+          "Buff",
+          "AreaEffectObject",
+          "SwitchLanes",
+          "ActivationSpawnCharacter");
+
+  /** The Monk's ability row, by the name his unit row gives it. */
+  private static String monkAbility() {
+    return Shipped.text(Shipped.unitRow("Monk"), "Ability");
+  }
+
+  /** A battle and the Monk deployed alone in it. */
+  private record MonkScene(Standard1v1Battle match, CharacterEntity monk) {
+
+    /**
+     * A request for the Monk's ability and the 40 steps after it, over which any cast it opens
+     * runs.
+     */
+    void requestAndRun() {
+      monk.requestAbility();
+      for (int step = 0; step < 40; step++) {
+        match.getBattle().step();
+      }
+    }
+  }
+
+  /**
+   * A Monk deployed alone in a battle on the configured tables, his ability row edited by the test,
+   * stepped 40 ticks so his deploy is over and a request finds the gate open.
+   */
+  private static MonkScene deployedMonk(Path folder, Consumer<ObjectNode> ability)
+      throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "character_abilities",
+            rows -> ability.accept(GameData.columns(rows, monkAbility())));
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
+    CharacterEntity monk =
+        match.deploy(
+            0,
+            new BattleRecords(tables).unit("Monk"),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            0,
+            3500,
+            9500);
+    for (int step = 0; step < 40; step++) {
+      match.getBattle().step();
+    }
+    return new MonkScene(match, monk);
+  }
+
+  @Test
+  @DisplayName(
+      "a request for an ability with no effect and no dash is refused: it would wait pending for"
+          + " good, its gate never open, which no reference holds")
+  void anAbilityWithNoEffectAndNoDashIsRefused(@TempDir Path folder) throws IOException {
+    // The Monk's ability stripped of every effect the gate counts, and given no dash.
+    MonkScene scene =
+        deployedMonk(
+            folder,
+            row -> {
+              EFFECT_COLUMNS.forEach(row::remove);
+              row.put("DashRange", 0);
+            });
+
+    assertThatThrownBy(scene::requestAndRun)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Monk casts " + monkAbility() + " with no effect and no dash, not modelled");
+  }
+
+  @Test
+  @DisplayName(
+      "a cast with a cast time and no trigger delay is refused: its effect would never fire, the"
+          + " trigger countdown stepped past zero on the cast's first visit")
+  void aCastWithNoTriggerDelayIsRefused(@TempDir Path folder) throws IOException {
+    MonkScene scene = deployedMonk(folder, row -> row.put("CastTime", 700).put("TriggerDelay", 0));
+
+    assertThatThrownBy(scene::requestAndRun)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Monk casts with a cast time and no trigger delay, not modelled");
+  }
+
+  @Test
+  @DisplayName(
+      "a cast whose trigger delay is longer than its cast time is refused: the cast would end"
+          + " before its effect fired and be cast again, over and over, which no reference holds")
+  void aTriggerDelayLongerThanTheCastIsRefused(@TempDir Path folder) throws IOException {
+    MonkScene scene =
+        deployedMonk(folder, row -> row.put("CastTime", 500).put("TriggerDelay", 700));
+
+    assertThatThrownBy(scene::requestAndRun)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Monk casts with a trigger delay longer than its cast time, not modelled");
+  }
+
+  @Test
+  @DisplayName(
+      "no ability a unit of the tables names reaches the refusals of a cast with no effect and no"
+          + " dash, a cast time with no trigger delay, or a trigger delay longer than the cast")
+  void noShippedAbilityReachesTheCastRefusals() {
+    GameTables tables = GameData.tables();
+    BattleRecords records = GameData.records();
+    List<String> checked = new ArrayList<>();
+    List<String> refused = new ArrayList<>();
+    for (String table : List.of("characters", "buildings")) {
+      for (GameRow row : tables.table(table).rows()) {
+        if (!row.has("Ability") || row.string("Ability").isEmpty()) {
+          continue;
+        }
+        AbilityData ability = records.unit(row.name()).ability();
+        checked.add(row.name());
+        boolean effect =
+            ability.onActivationAction() != null
+                || ability.buff() != null
+                || ability.areaEffectObject() != null
+                || ability.switchLanes()
+                || ability.activationSpawnCharacter() != null;
+        // The setter counts both in whole ticks.
+        int cast = ability.castTimeMs() / 50;
+        int trigger = ability.triggerDelayMs() / 50;
+        if (!effect && ability.dashRange() < 1) {
+          refused.add(row.name() + " " + ability.name() + ": no effect and no dash");
+        }
+        if (trigger == 0 && cast != 0) {
+          refused.add(row.name() + " " + ability.name() + ": a cast time and no trigger delay");
+        }
+        if (trigger > cast) {
+          refused.add(row.name() + " " + ability.name() + ": a trigger delay longer than the cast");
+        }
+      }
+    }
+
+    assertThat(checked).as("units with an ability").isNotEmpty();
+    assertThat(refused).isEmpty();
   }
 }

@@ -1043,6 +1043,12 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   Any other effect of an ability - a buff over a radius, a morph, a deploy time for the character it leaves, or a buff kept while it is pending - is refused as the ability is requested. So are a cast with no countdowns and a lane switch for a row that stays visible as it routes across.
 
+  Three more shapes of an ability row are refused, as no row of the tables has them and no reference holds what the game does with them (`BattleAbilityTest`, which also checks that no ability a unit of the tables names reaches them):
+
+  - an ability with none of the effects the gate counts and no dash, refused as it is requested; run on, the battle would never open its gate and the request would wait for good
+  - a cast time with no trigger delay, refused as the cast starts; run on, the battle would step the trigger delay past zero on the cast's first visit, so the effect would never fire
+  - a trigger delay longer than the cast time, refused as the cast starts; run on, the battle would end the cast before its effect fired, leave the ability pending again and cast it again, over and over
+
 - A friend collector, the Giant Buffer's, asks the battle's target locks for its nearest friends that its filter passes, as the object query answers them from the index. The priority is the squared distance flipped against the largest int.
 
   Its filter is read as any game object filter is, its list of rows to exclude among its tests, so the friends of an excluded row are passed over (`BattleAbilityTest`). A filter row the tables do not hold is refused as the collector is built, naming the row. The game's loader reads such a name as no filter, whose query lists nothing, but the game's own data may define the row outside the files the tables are made from: the Rune Giant's collector names `friendly_troops_for_rune_giant`, which the 16.635.3 tables do not hold, so a battle with a Rune Giant is refused on them.

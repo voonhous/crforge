@@ -559,7 +559,11 @@ public final class GridStateSetter implements StateSetter {
   /**
    * Entering the casting state: the casting flag raised and the countdowns seeded in whole ticks,
    * the cast time's and the trigger delay's. A cast with neither, whose effect fires in the entry
-   * itself, needs the casting's effect; without one it is refused.
+   * itself, needs the casting's effect; without one it is refused. Two more shapes are refused,
+   * which no row of the tables has and no reference holds: a cast time with no trigger delay, whose
+   * trigger countdown the cast's first visit steps past zero, so the effect never fires; and a
+   * trigger delay longer than the cast time, whose cast ends before its effect fires and, the
+   * ability pending again, is cast again over and over.
    */
   private void enterCasting() {
     if (casting == null) {
@@ -572,6 +576,14 @@ public final class GridStateSetter implements StateSetter {
     if ((cast | trigger) == 0 && casting.effect() == null) {
       throw new UnsupportedOperationException(
           owner.getName() + " casts with no cast time and no trigger delay, not modelled");
+    }
+    if (trigger == 0 && cast != 0) {
+      throw new UnsupportedOperationException(
+          owner.getName() + " casts with a cast time and no trigger delay, not modelled");
+    }
+    if (trigger > cast) {
+      throw new UnsupportedOperationException(
+          owner.getName() + " casts with a trigger delay longer than its cast time, not modelled");
     }
     casting.timers().setAbilityCountdown(cast);
     casting.timers().setAbilityWarningCountdown(trigger);

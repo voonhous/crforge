@@ -3939,11 +3939,7 @@ public class CharacterEntity extends WorldEntity {
         != 0) {
       return false;
     }
-    if (ability.buff() != null
-        || ability.areaEffectObject() != null
-        || ability.onActivationAction() != null
-        || ability.switchLanes()
-        || ability.activationSpawnCharacter() != null) {
+    if (hasEffect(ability)) {
       return true;
     }
     // An ability that only dashes waits for a reference within its dash range.
@@ -3954,6 +3950,19 @@ public class CharacterEntity extends WorldEntity {
     int squared =
         FixedMath.squaredDistance(getView().getX(), getView().getY(), reference.x(), reference.y());
     return squared <= ability.dashRange() * ability.dashRange();
+  }
+
+  /**
+   * Whether the ability does something as it fires that opens its gate without a dash: it buffs the
+   * unit, creates an area effect, runs an activation action, switches lanes or leaves a character
+   * behind.
+   */
+  private static boolean hasEffect(AbilityData ability) {
+    return ability.buff() != null
+        || ability.areaEffectObject() != null
+        || ability.onActivationAction() != null
+        || ability.switchLanes()
+        || ability.activationSpawnCharacter() != null;
   }
 
   /**
@@ -4018,7 +4027,9 @@ public class CharacterEntity extends WorldEntity {
    * first visit the gate opens, without that tag. A unit without an ability does nothing. An
    * ability whose columns the battle does not model, or that keeps a buff on a unit waiting to
    * cast, is refused, and so is a lane switch for a row that stays visible while it routes across,
-   * which no reference holds.
+   * which no reference holds. So is an ability with none of the effects the gate counts and no
+   * dash: its gate would never open, the request left pending for good, and no row of the tables
+   * has that shape.
    */
   public void requestAbility() {
     AbilityData ability = getData().ability();
@@ -4042,6 +4053,10 @@ public class CharacterEntity extends WorldEntity {
               + " casts "
               + ability.name()
               + " and stays visible as it routes across, which is not modelled");
+    }
+    if (!hasEffect(ability) && ability.dashRange() < 1) {
+      throw new UnsupportedOperationException(
+          name() + " casts " + ability.name() + " with no effect and no dash, not modelled");
     }
     boolean now = abilityGate();
     world.getEvents().abilityRequested(this, now);
