@@ -677,8 +677,9 @@ public class BattleWorld implements HolderPasses {
    * Whether someone else holds a lock on a hooking projectile's target: the battle's locks, made by
    * a collector's first step (a capture, a net) or held by a unit on itself through its ability
    * (the Boss Bandit's, a rerolling Barbarian's), are asked about the owner and the target on
-   * channel 0. Asked on every step of the flight; only the arrival and the hooked step read the
-   * answer.
+   * channel 0. Asked on every step of the flight and kept for that step only: only the arrival's
+   * and a hooked step's answer count, so a lock met on an earlier step and gone by the arrival
+   * leaves the hook as any other.
    *
    * @param projectile the hooking projectile
    */
@@ -691,35 +692,32 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Refuses a hooked projectile whose target someone else now holds a lock on: the hook lets the
-   * target go at once, the target's following ended and the projectile released, which no reference
-   * holds. A hook arriving at a held target does not hook it (an ordinary arrival); this is the
-   * step after a hook, the target held only once pulled.
+   * The let-go of a hooked projectile whose target someone else now holds a lock on: a target that
+   * is a character no longer follows the hook. The projectile's step then releases it. Nothing asks
+   * a state of anyone: the target's own state visit, finding nothing to follow, has it stand, and
+   * the owner waiting for the pull stays in its waiting state.
    *
    * @param projectile the hooked projectile
    */
-  public void refuseLockedHook(ProjectileEntity projectile) {
-    WorldEntity target = projectile.getTarget();
-    throw new UnsupportedOperationException(
-        projectile.name()
-            + " hooked "
-            + target.name()
-            + ", which another now holds, letting it go not modelled");
+  public void letGoOfHeldTarget(ProjectileEntity projectile) {
+    if (projectile.getTarget() instanceof CharacterEntity target) {
+      target.follow(null);
+    }
   }
 
   /**
-   * Refuses a hook arriving at a target someone else held a lock on during its flight but no longer
-   * does: the lock is asked on each step and only the arrival's answer counts, so the hook would
-   * take the target, but no reference holds such an arrival.
+   * Refuses a hooked projectile that lets its pulled target go, someone else now holding it, on the
+   * step it arrives back: its arrival would then run on a released hook, an ordinary arrival with
+   * its impact, which no reference holds.
    *
-   * @param projectile the hooking projectile
+   * @param projectile the hooked projectile
    */
-  public void refuseHookAfterLock(ProjectileEntity projectile) {
+  public void refuseLetGoAtArrival(ProjectileEntity projectile) {
     throw new UnsupportedOperationException(
         projectile.name()
-            + " hooks "
+            + " lets "
             + projectile.getTarget().name()
-            + ", which another held during its flight and no longer does, not modelled");
+            + " go, which another now holds, on the step it arrives back, not modelled");
   }
 
   /**
