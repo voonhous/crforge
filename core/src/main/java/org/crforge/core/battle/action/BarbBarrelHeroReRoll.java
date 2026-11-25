@@ -39,17 +39,20 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>An enemy's deflection may turn the projectile back. The first step of the run that finds the
  * projectile's count of deflections changed since its last step, after it has put the character on
  * the projectile's point, takes the character over to the other side: the character takes the side
- * of the summoner facing its own (that side's king), that summoner's cast and no play, so no
- * champion slot follows it from then on; the run keeps the new count, so a count that went up by
- * two in one step turns it over once. Nothing else changes: it rolls on with the projectile, and
- * its row, runs and lock stay. As a projectile turned an odd number of times leaves, the deflected
- * action is scheduled on the character after the end action, its cause the summoner facing the
- * character's side as it is then; the deploy and the facing follow, for that side.
+ * of the summoner facing its own (that side's king), that summoner's cast and its play, none, so no
+ * slot that follows a play follows it from then on, while a slot of that side holding its champion
+ * but following no play yet does; the run keeps the new count, so a count that went up by two in
+ * one step turns it over once. A turn back to the character's first side is the same take over.
+ * Nothing else changes: it rolls on with the projectile, and its row, runs and lock stay. As a
+ * projectile turned an odd number of times leaves, the deflected action is scheduled on the
+ * character after the end action, its cause the summoner facing the character's side as it is then;
+ * the deploy and the facing follow, for that side. The count read there is the projectile's own: a
+ * turn past the most a projectile takes ends its flight on that step, before the run sees it, so
+ * the character stays on its side and an odd count still gives it the deflected action.
  *
  * <p>Refused as the row is built: tags while the spawn delay runs, which the run does not raise. As
- * it starts: an owner other than a character, and a clone. As it runs: a turn over to a side whose
- * champion slot follows the character's ability, where which copy the slot follows would rest on
- * the play the character carries over, the summoner's, which no recording holds.
+ * it starts: an owner other than a character, and a clone. As it runs: a turn with no summoner
+ * facing the character's side.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -60,9 +63,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " on the projectile's leaving (end action, deploy duration, facing) and the finish"
             + " with the release and the relocation; held by ability_hero_barb_log. A turned"
             + " roll: the character taken over to the facing summoner's side and the deflected"
-            + " action as it ends, held by reroll_deflected_t316 and reroll_deflected_t327."
-            + " Refused: a turn over to a side whose champion slot follows the same ability, a"
-            + " clone, and tags while the spawn delay runs.")
+            + " action as it ends, held by reroll_deflected_t316 and reroll_deflected_t327; the"
+            + " turn back by a deflector of each side and a slot of the new side that follows no"
+            + " play yet, held by reroll_twice_t316, reroll_twice_t327 and"
+            + " reroll_turned_to_idle_slot_t316. Refused: a clone, and tags while the spawn delay"
+            + " runs.")
 public final class BarbBarrelHeroReRoll extends RowAction {
 
   /**

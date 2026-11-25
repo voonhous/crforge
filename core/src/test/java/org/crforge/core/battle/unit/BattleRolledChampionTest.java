@@ -24,10 +24,12 @@ import static org.crforge.core.battle.HeroFormTables.ROLL_HERO_INTERVAL;
 import static org.crforge.core.battle.HeroFormTables.ROLL_HERO_LISTEN;
 import static org.crforge.core.battle.HeroFormTables.THROW;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.HeroFormTables;
 import org.crforge.core.battle.SpawnedChampionTables;
 import org.crforge.core.battle.data.GameTables;
@@ -60,6 +62,16 @@ class BattleRolledChampionTest {
   private static final int X = 3500;
 
   private static final int Y = 9000;
+
+  /**
+   * How far behind the hero side 0's deflector stands in the twice turned reroll: far enough that
+   * the hero backing off and the first roll forward pass it, near enough that the roll turned back
+   * reaches its area.
+   */
+  private static final int TWICE_BEHIND = 1400;
+
+  /** The most deflections a projectile takes (MAX_DEFLECTION_TIMES), as the tests write it. */
+  private static final int MOST_DEFLECTIONS = 2;
 
   @Test
   @DisplayName(
@@ -309,13 +321,46 @@ class BattleRolledChampionTest {
 
   @Test
   @DisplayName(
-      "a reroll turned over to a side whose champion slot follows the hero's ability is refused:"
-          + " which copy that slot follows would rest on the play the hero carries there, that"
-          + " side's summoner's, which no recording holds")
-  void aRerollTurnedToASideFollowingTheSameAbilityIsRefused(@TempDir Path folder)
+      "a reroll turned over to a side whose champion slot holds the hero's row from the deck but"
+          + " follows no play yet is followed by that slot: the hero carries that side's"
+          + " summoner's play there, none, the play such a slot follows")
+  void aRerollTurnedToASideWithAnIdleSlotIsFollowedThere(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(folder, true);
+    TowerEntity summoner = scene.battle.getWorld().kingTower(1);
+    ChampionController idle = summoner.championSlotFollowing(ROLL_HERO);
+    assertThat(idle).as("side 1's deck gives a slot the hero's row").isNotNull();
+    assertThat(idle.getDeployIndex()).as("no play of it yet").isEqualTo(-1);
+    CharacterEntity hero = scene.heroReady();
+    scene.deflectAhead(hero);
+    scene.battle.useAbility(scene.tick(), 0, hero.getId(), "a");
+    int limit = scene.tick() + 100;
+    while (hero.side() == 0) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
+    }
+    assertThat(hero.getDeployIndex()).isEqualTo(-1);
+    scene.step();
+    assertThat(idle.champions()).containsExactly(hero);
+    assertThat(scene.slot().champions()).doesNotContain(hero);
+    // The roll, turned once, ends with the deflected row, which names no ability: the slot lets
+    // the hero go again.
+    while (!hero.getData().name().equals(ROLL_DEFLECTED)) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
+    }
+    scene.step();
+    assertThat(idle.champions()).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "a reroll turned over to a side whose champion slot follows a play of the same hero is not"
+          + " followed there: the hero carries no play, and the slot keeps following its own"
+          + " copy")
+  void aRerollTurnedToASideFollowingItsOwnPlayIsNotFollowedThere(@TempDir Path folder)
       throws IOException {
     Scene scene = new Scene(folder, true);
-    // Side 1's own roll hero first, so its slot follows the same ability.
+    // Side 1's own roll hero first, so its slot follows a play of the same ability.
     scene.waitToPlay();
     while (scene.match.side(1).wholeElixir() < CARD_COST) {
       scene.step();
@@ -333,23 +378,77 @@ class BattleRolledChampionTest {
       assertThat(scene.tick()).isLessThan(limit);
       scene.step();
     }
-    assertThat(scene.battle.getWorld().kingTower(1).championSlot(1).getChampion().name())
-        .isEqualTo(ROLL_HERO);
+    CharacterEntity own = scene.named(ROLL_HERO).get(0);
+    ChampionController followed =
+        scene.battle.getWorld().kingTower(1).championSlotFollowing(ROLL_HERO);
+    assertThat(followed.getDeployIndex()).isNotNegative();
     CharacterEntity hero = scene.heroReady();
     scene.deflectAhead(hero);
     scene.battle.useAbility(scene.tick(), 0, hero.getId(), "a");
-    int end = scene.tick() + 100;
-    UnsupportedOperationException refused = null;
-    try {
-      while (scene.tick() < end) {
-        scene.step();
-      }
-    } catch (UnsupportedOperationException e) {
-      refused = e;
+    limit = scene.tick() + 100;
+    while (hero.side() == 0) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
     }
-    assertThat(refused).isNotNull();
-    assertThat(refused).hasMessageContaining(REROLL).hasMessageContaining("follows");
-    assertThat(hero.side()).as("refused before the hero is taken over").isEqualTo(0);
+    scene.step();
+    assertThat(followed.champions()).containsExactly(own);
+  }
+
+  @Test
+  @DisplayName(
+      "a reroll turned by a deflector of each side comes back to the hero's side: the second turn"
+          + " takes it over again, carrying its own side's summoner's cast and no play, so its own"
+          + " slot no longer follows it; turned a third time, past the most a projectile takes, it"
+          + " ends on that step, which the run never sees, so the hero stays on its side and the"
+          + " odd count gives it the deflected row there")
+  void aRerollTurnedTwiceComesBackWithNoPlay(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(folder, false, MOST_DEFLECTIONS);
+    ChampionController slot = scene.slot();
+    CharacterEntity hero = scene.heroReady();
+    TowerEntity own = scene.battle.getWorld().kingTower(0);
+    // Side 0's deflector behind the hero, then side 1's ahead of it.
+    scene.deflector(0, hero.getView().getX(), hero.getView().getY() - TWICE_BEHIND);
+    scene.deflectAhead(hero);
+    scene.battle.useAbility(scene.tick(), 0, hero.getId(), "a");
+    int limit = scene.tick() + 100;
+    while (scene.projectiles(REROLL_PROJECTILE).isEmpty()) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
+    }
+    ProjectileEntity barrel = scene.projectiles(REROLL_PROJECTILE).get(0);
+    while (hero.side() == 0) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
+    }
+    assertThat(barrel.getDeflections()).isEqualTo(1);
+    while (hero.side() == 1) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
+    }
+    assertThat(barrel.getDeflections()).isEqualTo(2);
+    assertThat(barrel.side()).isZero();
+    assertThat(hero.castId()).isEqualTo(own.castId());
+    assertThat(hero.getDeployIndex()).as("its own side's summoner's play, none").isEqualTo(-1);
+    scene.step();
+    assertThat(slot.champions()).doesNotContain(hero);
+    while (scene.projectiles(REROLL_PROJECTILE).contains(barrel)) {
+      assertThat(scene.tick()).isLessThan(limit);
+      assertThat(hero.side()).isZero();
+      scene.step();
+    }
+    // Side 1's deflector turned it a third time, past the most, and its flight ended on that
+    // step: the run saw two turns, the count at the end is three.
+    assertThat(barrel.getDeflections()).isEqualTo(MOST_DEFLECTIONS + 1);
+    assertThat(hero.side()).isZero();
+    assertThat(hero.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThat(hero.getView().getDirY()).isPositive();
+    while (!hero.getData().name().equals(ROLL_DEFLECTED)) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
+    }
+    assertThat(hero.side()).as("the deflected row on the side it stands on").isZero();
+    scene.step();
+    assertThat(slot.champions()).doesNotContain(hero);
   }
 
   /**
@@ -375,7 +474,27 @@ class BattleRolledChampionTest {
      * @param sideOneRolls true to give side 1 the roll card in its hero slot too, in its hand
      */
     Scene(Path folder, boolean sideOneRolls) throws IOException {
-      tables = HeroFormTables.write(folder);
+      this(folder, sideOneRolls, -1);
+    }
+
+    /**
+     * @param folder the folder the tables are written into
+     * @param sideOneRolls true to give side 1 the roll card in its hero slot too, in its hand
+     * @param mostDeflections the most deflections a projectile takes, written into the tables, or
+     *     -1 to keep the configured tables' value
+     */
+    Scene(Path folder, boolean sideOneRolls, int mostDeflections) throws IOException {
+      GameTables written = HeroFormTables.write(folder);
+      if (mostDeflections >= 0) {
+        GameData.alterLoaded(
+            folder,
+            "globals",
+            rows ->
+                ((ObjectNode) rows.get("MAX_DEFLECTION_TIMES").get("columns"))
+                    .put("NumberValue", mostDeflections));
+        written = GameTables.load(folder);
+      }
+      tables = written;
       int[] slots = new int[8];
       slots[0] = MatchSide.HERO_SLOT;
       Standard1v1Battle made = null;
@@ -425,15 +544,24 @@ class BattleRolledChampionTest {
      * until its deflecting area effect is up.
      */
     void deflectAhead(CharacterEntity hero) {
+      deflector(1, hero.getView().getX(), hero.getView().getY() + 2500);
+    }
+
+    /**
+     * Puts a side's deflector down at a point, held still, and steps until its deflecting area
+     * effect is up.
+     */
+    void deflector(int side, int x, int y) {
+      long before = deflectors();
       CharacterEntity deflector =
           battle.deploy(
               tick() + 1,
               battle.getWorld().getRecords().unit(DEFLECTOR),
               LEVEL,
-              1,
-              hero.getView().getX(),
-              hero.getView().getY() + 2500,
-              "deflector");
+              side,
+              x,
+              y,
+              "deflector" + side);
       int limit = tick() + 100;
       while (deflector.getId() == 0
           || deflector.getView().getState() == GridEntityState.DEPLOYING
@@ -444,7 +572,7 @@ class BattleRolledChampionTest {
       deflector.setActive(CharacterEntity.MOVEMENT_SLOT, false);
       deflector.setActive(CharacterEntity.TARGETING_SLOT, false);
       deflector.requestAbility();
-      while (deflectors() == 0) {
+      while (deflectors() == before) {
         assertThat(tick()).isLessThan(limit);
         step();
       }
