@@ -48,7 +48,7 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " root owner turned at its start and finished, a spell-like one too (the evolved"
             + " Cannon's bomb met at its arrival after its area effect left), a rider's shot sent"
             + " at its carrier, a volley turned as one or each projectile on its own, a hook ended"
-            + " where it is,"
+            + " where it is, a Goblin Barrel turned again sent back at the parent that turned it,"
             + " and a turn past MAX_DEFLECTION_TIMES ending the flight; held by the reference"
             + " battles of the deflect corpora: arrows-deflect-v1, barbloghero-deflect-v1,"
             + " barrel-king-deflect-v1, body-deflect-v1, bomber-evolved-deflect-v1,"
@@ -56,7 +56,8 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " deflect-enchant-copy-v1,"
             + " deflect-end-poison-v1, deflect-no-root-v1, deflect-rider-shot-v1,"
             + " deflect-source-left-v1, firecracker-deflect-v1, fisherman-deflect-v1,"
-            + " goblin-barrel-deflect-v1, hunter-deflect-v1, hunter-ev1-net-deflect-v1,"
+            + " goblin-barrel-deflect-v1, goblin-barrel-redeflect-v1, hunter-deflect-v1,"
+            + " hunter-ev1-net-deflect-v1,"
             + " king-shot-deflect-captured-v1, log-deflect-v1, magic-archer-deflect-v1,"
             + " monk-deflect-buff-v1, the pingpong-deflect corpora, princess-deflect-v1,"
             + " princess-volley-redeflect-v1, royal-giant-deflect-v1, the"
@@ -367,8 +368,8 @@ public final class ProjectileDeflection {
   /**
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
    * one with a deflection behaviour, a box body; one with a deflect radius that spawns a character
-   * at its impact, as the Goblin Barrel, deflected before, whose turn-around back at the parent
-   * that turned it no recording holds; one that hops or homes for a time; a hook already pulling
+   * at its impact, as the Goblin Barrel, deflected before by a parent that has since left, whose
+   * rootless finish no recording holds; one that hops or homes for a time; a hook already pulling
    * what it hooked, which a deflection would let go, as no recording holds; one that flies to a
    * point and does not stop at collisions with a least distance, a box body or a deflect radius,
    * which no recording holds; one whose impact spawns a chain of projectiles two links or more
@@ -402,6 +403,13 @@ public final class ProjectileDeflection {
    * the king tower that casts it is its root and it has no target, so it is sent at the enemy crown
    * tower nearest the area effect (see {@link #deflect}), and its impact there makes its children
    * for the deflector's side (see {@link CharacterSpawns#impactSpawn}).
+   *
+   * <p>Nor on its deflections after the first, while the parent that turned it before is still in
+   * the battle: that parent, a character and not a king tower, is its root, and it has a target or
+   * none, so it is sent back at that parent as from any root (see {@link #deflect}), for the side
+   * of the parent turning it now, and lands on it, its children made for that side. A third turn,
+   * past the most a projectile takes (MAX_DEFLECTION_TIMES), ends its flight, so it lands nowhere
+   * and makes no children.
    *
    * <p>A deflection behaviour that only ignores the height is no bar, as the Royal Giant's shot
    * has: it changes the deflection pass's measure (see {@link #deflectPass}) and nothing the
@@ -460,7 +468,8 @@ public final class ProjectileDeflection {
         || (data.deflectRadius() != 0
             && !spellLike
             && data.spawnCharacter() != null
-            && projectile.getDeflections() >= 1)
+            && projectile.getDeflections() >= 1
+            && projectile.getRoot() == null)
         || (data.projectileRadiusY() != 0 && !rolling)
         || data.chainedHitRadius() >= 1
         || (data.homingLike() && !pingpong && !rolling && !data.checkCollisions() && !piercing)
