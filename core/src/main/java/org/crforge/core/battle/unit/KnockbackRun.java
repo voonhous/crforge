@@ -25,6 +25,14 @@ import org.crforge.core.pathfinding.move.MovementState;
  * lifts it as any other. A unit dashing under a row with no jump height (a Golden Knight's chain
  * dash) is not put down: the knock runs on it as it dashes.
  *
+ * <p>In the game neither the start nor the update tests a unit following a removed building (a
+ * Fisherman a hook on a building drags): a knock started on him runs as on any unit, and so does
+ * one already running when his hook lands on a building. The hook drags him on, on its own step,
+ * while the knock lifts him; a stun given with the knock (the hero Giant's slap) switches his
+ * targeting off, and the hook then lets him go where he is, so he stands under the rest of the
+ * knock. An update that finds him still dragged with his targeting on, the hook going on with him
+ * (a knock with no stun), is refused: no recording holds a drag of several steps under a knock.
+ *
  * <p>Each update raises DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS, and FORCE_IS_AIR while more
  * than 149 ms are left. A unit with a movement component that tracks a charge has its charge reset,
  * as the state setter resets it: the progress to 0 for a unit with a charge range of its own or
@@ -58,13 +66,17 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " put-down of a unit in a jump or dashing under a row with a jump height, held by"
             + " recorded witnesses outside the locked references. A unit dashing under a row with"
             + " no jump height knocked as it dashes, its dash going on, held by recorded witnesses"
-            + " outside the locked references. A carrier knocked as any unit,"
+            + " outside the locked references. A Fisherman a hook on a building drags knocked as"
+            + " any unit, the start and the update testing no such state: a slap started as the"
+            + " hook drags him, and a slap running when the hook lands, the hook letting him go once"
+            + " the slap's stun switches his targeting off, held by recorded witnesses outside the"
+            + " locked references. Refused: an update finding him still dragged with his targeting"
+            + " on (a knock with no stun, an uppercut running when the hook lands), a drag of"
+            + " several steps under a knock no recording holds. A carrier knocked as any unit,"
             + " its riders put back around it on each movement visit, held by recorded battles"
             + " outside the locked references. Refused: a unit already"
             + " switching lanes as the run starts, which the standard game finishes at once but"
-            + " no recorded battle reaches; a unit following a removed"
-            + " building, which the knock's own code does not test but whose pulled state under"
-            + " the knock no reference holds; a rider. A clone knocked as any unit, the start,"
+            + " no recorded battle reaches; a rider. A clone knocked as any unit, the start,"
             + " put-down and update asking nothing of it, held by the reference battle"
             + " graveyard_clone_slap_push (the hero Giant's slap); an uppercut's push reaching a"
             + " clone is refused, which no recording holds.")
@@ -103,14 +115,15 @@ final class KnockbackRun extends ActionInstance {
     this.row = row;
     this.unit = unit;
     int state = unit.getView().getState();
-    // A unit following a removed building, which the knock's own code does not test, and a unit in
-    // a jump or a dash with a height but no movement component, which the put-down below would
-    // leave in the air, are held by no reference. A unit dashing under a row with no jump height (a
-    // Golden Knight's or a Bandit's dash) is knocked as it is: the put-down does nothing for it,
-    // the knock's own code tests no dash, and its dash goes on under the knock's tags and arc.
+    // A unit in a jump or a dash with a height but no movement component, which the put-down below
+    // would leave in the air, is held by no reference. A unit following a removed building (a
+    // Fisherman a hook on a building drags) is knocked as any other: the knock's own code does not
+    // test that state; the update refuses him while the hook goes on dragging him with his
+    // targeting on. A unit dashing under a row with no jump height (a Golden Knight's or a Bandit's
+    // dash) is knocked as it is: the put-down does nothing for it, the knock's own code tests no
+    // dash, and its dash goes on under the knock's tags and arc.
     boolean inTheAir = BattleWorld.inTheAir(unit);
-    if (state == GridEntityState.FOLLOWING_REMOVED_BUILDING
-        || (inTheAir && !unit.hasMovementComponent())) {
+    if (inTheAir && !unit.hasMovementComponent()) {
       throw new UnsupportedOperationException(
           row.name() + " knocks " + unit.name() + " in state " + state + ", not modelled");
     }
@@ -174,9 +187,19 @@ final class KnockbackRun extends ActionInstance {
       unit.world().getEvents().knockbackStepped(unit, before, counter, height, tags, true);
       return;
     }
-    if (unit.getView().getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING) {
+    // A unit a hook on a building drags (a Fisherman) is knocked as any other while the hook lets
+    // it go: the hero Giant's slap stuns him with its knock, his targeting is off by the knock's
+    // next update, and the hook ends on its next step. A hook that goes on dragging him, his
+    // targeting still on (a knock with no stun, the evolved Mega Knight's uppercut running when the
+    // hook lands), is held by no recording.
+    if (unit.getView().getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING
+        && unit.isActive(CharacterEntity.TARGETING_SLOT)) {
       throw new UnsupportedOperationException(
-          row.name() + " knocks " + unit.name() + " following a removed building, not modelled");
+          row.name()
+              + " knocks "
+              + unit.name()
+              + " while a hook on a building drags it on, its targeting on, which no recording"
+              + " holds");
     }
     if (moving && row.getHeight() >= 1) {
       height = arc(row.getDurationMs(), row.getHeight(), counter, height);
