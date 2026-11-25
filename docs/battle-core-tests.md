@@ -260,6 +260,7 @@ The tests and reference battles that hold the battle core, as they landed. How a
   - Nothing given back once an ActionAbilityDelivered ran on the unit, even inside a long window.
   - A death before the trigger delay fires the delivering action giving the cost back once, as the unit leaves.
 - `BattleDashTest` holds a Bandit untouchable while it dashes and for its immunity after, a Mega Knight that can be hurt while it dashes, the Mega Knight's landing hold, and the refusal of a Golden Knight's ability left pending.
+- An evolved Hunter's net reaching a Mega Knight in its dash jump is held by the recorded reference battle `mk-jump-net-v1/mk_jump_netted_t1256`: the jump lands as usual and the Mega Knight then stands snared until the net's hold ends. `mk-jump-net-v1/mk_walk_netted_t1246` nets the Mega Knight while it walks, for comparison.
 - `BattleChargeTest` holds a charge tracked from 0 for a row with a charge range and not at all without, and the refusal of a row whose completed charge runs an action.
 - `RiderTest` holds a Goblin Giant's riders:
   - Made first with the lower ids, placed behind it at 4000 high, untouchable, answering no attacker, out of collisions, and gone from the pre-pass after the cleanup that removes the Giant, their Spear Goblins in.

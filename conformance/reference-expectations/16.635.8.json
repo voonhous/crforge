@@ -677,6 +677,8 @@
   "mk-hold-stun-v1/sparkys_t1150": {"outcome": "diagnostic_match"},
   "mk-hold-stun-v1/sparkys_t1170": {"outcome": "diagnostic_match"},
   "mk-hold-stun-v1/sparkys_t1190": {"outcome": "diagnostic_match"},
+  "mk-jump-net-v1/mk_jump_netted_t1256": {"outcome": "diagnostic_match"},
+  "mk-jump-net-v1/mk_walk_netted_t1246": {"outcome": "diagnostic_match"},
   "mk-jump-pull-v1/no_tornado": {"outcome": "diagnostic_match"},
   "mk-jump-pull-v1/tornado_before_t300": {"outcome": "diagnostic_match"},
   "mk-jump-pull-v1/tornado_dashing_t346": {"outcome": "diagnostic_match"},
