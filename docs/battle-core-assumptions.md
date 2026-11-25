@@ -1261,12 +1261,11 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A unit a Clone reaches while pulled leaves 12 or 13 for the clone state 8 as it leaves them for any state, but with no standing test: it stays where the hook had it, on the river too, and its move apart starts from there. A troop set up so no longer follows the hook, which flies on toward its aim and, arriving, is let go and impacts, asking no state of anyone; the Fisherman in 14 goes on as the hook leaves. A Fisherman cloned in 13 has his targeting switched off by the setup's combat gate, so the hook's next step finds its owner lost and ends it where it stands, with no flight back and no impact.
 
-  A hook arriving at a target someone else holds a lock on, on channel 0 (a capture, the Boss Bandit's or a rerolling Barbarian's lock on itself), does not hook it either. It makes an ordinary arrival, at its aim, with its impact. The lock is asked again on each step and only the arrival's answer counts.
+  A hook arriving at a target someone else holds a lock on, on channel 0 (a capture, the Boss Bandit's or a rerolling Barbarian's lock on itself), does not hook it either. It makes an ordinary arrival, at its aim, with its impact. The lock is asked again on each step and only the arrival's answer counts: a hook arriving after a lock it met during its flight is gone (an evolved Goblin Cage that held the troop leaving the battle) hooks it as any other.
 
-  Refused:
+  A pulled troop someone else then holds (an evolved Goblin Cage claiming it on the step the hook takes it) is let go at once. On its next step the hook finds the lock: the troop no longer follows it, the hook is released and leaves the battle, and nothing asks a state of anyone. The troop's own state visit, later in that step and with nothing to follow, has it stand; the Fisherman stays in his waiting state until he starts an attack. The recorded reference battles `hook-locked-edges-v1/hook_after_lock_t1162` and `hook_after_lock_t1163` hold the first, `hooked_pulled_held_t1249` and `hooked_pulled_held_t1250` the second.
 
-  - a hook arriving after a lock it met during its flight is gone
-  - a pulled target someone else then holds (the hook lets it go at once)
+  Refused: a pulled troop let go so on the step the hook arrives back, whose arrival would run on the released hook.
 
   A row with a MorphCharacter, which the hook's leaving would morph back into, is refused with its row.
 

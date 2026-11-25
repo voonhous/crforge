@@ -775,8 +775,8 @@ class BattleFishermanTest {
 
   @Test
   @DisplayName(
-      "a hook arriving at a troop another held a lock on during its flight but no longer does is"
-          + " refused")
+      "a hook arriving at a troop another held a lock on during its flight but no longer does"
+          + " hooks it: only the arrival's answer counts")
   void aTroopLockedDuringTheFlight() {
     Scene scene = new Scene();
     CharacterEntity held = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
@@ -785,24 +785,66 @@ class BattleFishermanTest {
     hold(scene, holder, held);
     // One step under the lock, then let go: the next pre-pass drops it.
     scene.step(1);
-    assertThat(scene.hooks.get(0).isReleased()).isFalse();
+    ProjectileEntity hook = scene.hooks.get(0);
+    assertThat(hook.isReleased()).isFalse();
     scene.match.getWorld().locks().release(holder.getId(), held.getId(), 0);
-    assertThatThrownBy(() -> scene.step(200))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("held during its flight");
+    while (!hook.isHooked() && !hook.isReleased() && scene.tick < 200) {
+      scene.step(1);
+    }
+    // Hooked as any troop is: pulled, and the Fisherman waits for the pull.
+    assertThat(hook.isHooked()).isTrue();
+    assertThat(held.getView().getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
+    assertThat(scene.fisherman.getView().getState()).isEqualTo(GridEntityState.COMPONENTS_DISABLED);
   }
 
   @Test
-  @DisplayName("a pulled troop another then holds a lock on is refused")
+  @DisplayName(
+      "a pulled troop another then holds a lock on is let go at once: it no longer follows the"
+          + " hook, which is released, and stands; the Fisherman goes on waiting")
   void aPulledTroopLocked() {
     Scene scene = new Scene();
     CharacterEntity held = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
     CharacterEntity holder = farOff(scene);
     scene.stepToTheHook();
     hold(scene, holder, held);
+    ProjectileEntity hook = scene.hooks.get(0);
+    assertThat(hook.isHooked()).isTrue();
+    scene.step(1);
+    assertThat(hook.isReleased()).isTrue();
+    assertThat(held.getUnit().timers().getFollowTarget()).isNull();
+    // Nothing asks a state of the troop or the Fisherman: the troop's own state visit, later in
+    // the same step and with nothing to follow, has it stand, and the Fisherman stays in his
+    // waiting state.
+    assertThat(scene.states.stream().filter(s -> s.startsWith(scene.tick - 1 + " "))).isEmpty();
+    assertThat(held.getView().getState()).isEqualTo(GridEntityState.STANDING);
+    assertThat(scene.fisherman.getView().getState()).isEqualTo(GridEntityState.COMPONENTS_DISABLED);
+  }
+
+  @Test
+  @DisplayName(
+      "a pulled troop another then holds a lock on, on the step the hook arrives back, is refused")
+  void aPulledTroopLockedAsItArrives() {
+    // The same scene played without the lock gives the step the hook arrives back on.
+    Scene probe = new Scene();
+    probe.still(0, 1, "Knight", X, Y + IN_RING, "K");
+    farOff(probe);
+    ProjectileEntity probed = probe.stepToTheHook();
+    while (!probed.isReleased() && probe.tick < 400) {
+      probe.step(1);
+    }
+    assertThat(probed.isReleased()).isTrue();
+    int arrival = probe.tick - 1;
+
+    Scene scene = new Scene();
+    CharacterEntity held = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
+    CharacterEntity holder = farOff(scene);
+    scene.step(arrival);
+    assertThat(scene.hooks.get(0).isHooked()).isTrue();
+    assertThat(scene.hooks.get(0).isReleased()).isFalse();
+    hold(scene, holder, held);
     assertThatThrownBy(() -> scene.step(1))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("which another now holds");
+        .hasMessageContaining("on the step it arrives back");
   }
 
   /** A Knight far off on the other half, out of everyone's sight: a lock's holder. */

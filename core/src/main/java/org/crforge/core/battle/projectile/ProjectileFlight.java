@@ -210,17 +210,17 @@ final class ProjectileFlight {
       speed = p.getSpeedOverride();
     }
     boolean dragsOwner = false;
+    // Whether this step let a pulled target go, its hook released.
+    boolean letGo = false;
     // Whether an arrival on this step may hook: not when the target keeps out of the hook.
     boolean hookable = true;
     if (drags) {
       WorldEntity target = p.getTarget();
       // A target someone else holds a lock on keeps out of the hook too: arriving on this step the
       // projectile does not hook it but ends as an ordinary arrival. The lock is asked again on
-      // each step; only the arrival's and a hooked step's answer count.
+      // each step; only the arrival's and a hooked step's answer count, so a lock gone by the
+      // arrival leaves the hook as any other.
       boolean held = world.hookTargetHeld(p);
-      if (held && !p.isHooked()) {
-        p.markTargetHeldInFlight();
-      }
       if (p.isHooked()) {
         if (p.getOwner().getView().getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING) {
           // A hook on a building stands and drags its owner instead.
@@ -228,8 +228,11 @@ final class ProjectileFlight {
           dragsOwner = true;
         } else {
           if (held) {
-            // A pulled target someone else now holds is let go at once.
-            world.refuseLockedHook(p);
+            // A pulled target someone else now holds is let go at once: it no longer follows the
+            // hook, which is released, and the step goes on as any hooked step.
+            world.letGoOfHeldTarget(p);
+            p.release();
+            letGo = true;
           }
           if (target != null && data.dragBackAsAttractor()) {
             speed = attracted(target, speed, BattleWorld.HOOK_PULL_SPEED_FLOOR);
@@ -251,6 +254,11 @@ final class ProjectileFlight {
       return;
     }
     if (remaining <= speed) {
+      if (letGo) {
+        // Released and arriving back on the same step: the arrival would run on a released hook,
+        // which no reference holds.
+        world.refuseLetGoAtArrival(p);
+      }
       arrive(p, world, hookable);
     } else if (dragsOwner) {
       dragOwner(p, world);
@@ -468,11 +476,6 @@ final class ProjectileFlight {
         p.release();
         impact(p, world);
       } else {
-        if (p.isTargetHeldInFlight()) {
-          // Held on an earlier step and no longer: the hook would take it, but no reference
-          // holds an arrival after the lock is gone.
-          world.refuseHookAfterLock(p);
-        }
         hook(p, world);
       }
       return;
