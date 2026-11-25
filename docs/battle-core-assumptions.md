@@ -954,7 +954,6 @@ These are supplied answers, recorded on the classes that carry them and listed h
   - a body, a hop, a flight to a point without a stop at collisions on a row with a least distance, a box or a deflection radius
   - a timed homing on any other row but a hook's
   - a sweep
-  - a hook already pulling what it hooked
   - an impact spawning projectiles along the length (the Fire Wall's)
   - a chain other than a wave of Arrows
   - one without a root owner that is spell-like (a bomb whose area effect has left) or has an action on reaching its target
@@ -963,6 +962,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
   A projectile without a root owner, its shooter gone (a Witch's or a Little Prince's shot, a fallen princess tower's arrow), is not sent back. The parent takes its damage, it is turned at its start with no target for the parent's side, and its flight ends there. So it leaves at the next cleanup without an impact on its target.
 
   A hook on its way to its target, the Fisherman's, is not turned either. The parent takes its damage (it has none) and the hook's flight ends where it is, still its owner's, for his side and aimed at its target, uncounted as a deflection. So it leaves at the next cleanup without hooking anything, and its action on reaching its target, if it had one, is scheduled.
+
+  A hook already pulling a troop it hooked ends the same way and leaves at that step's cleanup (fisherman-hooked-deflect-v1). Its end lets go of neither the troop nor the Fisherman. On the next step the troop, with nothing to follow, stands where the hook left it, and the Fisherman, no longer held by his hook, goes on. A hook standing at a building while it drags the Fisherman is never measured against a Deflect: its step only moves the Fisherman, and the drag goes on.
 
   The evolved Bomber's bouncing bomb is a chain. Each impact spawns the next bounce, one link shorter, and every launch, a deflection's relaunch included, counts the links from the row's spawn chain again.
 
