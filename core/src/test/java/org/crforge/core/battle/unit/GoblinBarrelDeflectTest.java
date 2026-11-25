@@ -74,12 +74,26 @@ class GoblinBarrelDeflectTest {
 
     final GameTables tables = GameData.tables();
     final BattleRecords records = new BattleRecords(tables);
-    final Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
+    final Standard1v1Battle match;
     final List<Deflection> deflections = new ArrayList<>();
     final List<Spawned> spawned = new ArrayList<>();
     int ticks;
 
     Scene() {
+      this(Standard1v1Battle.PRINCESS_TOWERS);
+    }
+
+    /**
+     * A battle whose top side's towers are the given spawn group's, the bottom's the princess's.
+     */
+    Scene(String topTowers) {
+      match =
+          new Standard1v1Battle(
+              tables,
+              List.of(
+                  new Standard1v1Battle.Towers(Standard1v1Battle.PRINCESS_TOWERS, LEVEL, LEVEL),
+                  new Standard1v1Battle.Towers(topTowers, LEVEL, LEVEL)),
+              false);
       match
           .getWorld()
           .addObserver(
@@ -249,27 +263,64 @@ class GoblinBarrelDeflectTest {
     assertThat(scene.deflections.get(0).parent()).isSameAs(bottom);
   }
 
-  @Test
-  @DisplayName(
-      "a Goblin Barrel turned by a Deflect nearer the enemy king tower than either enemy princess"
-          + " tower is refused: its turn at the king tower is held by no recording")
-  void barrelSentAtTheKingTowerIsRefused() {
-    Scene scene = new Scene();
-    // In front of the enemy's king tower, nearer it than either princess tower.
+  /**
+   * A bottom Monk in front of the enemy's king tower, nearer it than either of the enemy's other
+   * crown towers, casts its Deflect, and the enemy casts a Goblin Barrel onto it: the barrel is
+   * sent, with no target, at the king tower's position, as at a princess tower, and its Goblins
+   * land there for the Monk's side.
+   */
+  private static void barrelIsSentAtTheKingTower(String topTowers) {
+    Scene scene = new Scene(topTowers);
+    // In front of the enemy's king tower, nearer it than either of its other crown towers.
     CharacterEntity monk = scene.monkWithDeflect(0, 9000, 25000);
     AreaEffectEntity deflect = scene.deflectOf(monk);
     WorldEntity king = scene.nearestCrownTower(1, deflect.getX(), deflect.getY());
     assertThat(king.getData().king()).as("the enemy king tower is the nearest here").isTrue();
     scene.castBarrel(1, 9000, 25000);
-    assertThatThrownBy(
-            () -> {
-              while (scene.deflections.isEmpty()) {
-                scene.step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("(" + BARREL + "), cast from the king tower")
-        .hasMessageContaining("at the king tower " + king.name() + ", which is not modelled");
-    assertThat(scene.deflections).isEmpty();
+    while (scene.deflections.isEmpty()) {
+      scene.step();
+    }
+    Deflection d = scene.deflections.get(0);
+    ProjectileEntity barrel = d.projectile();
+    assertThat(barrel.getData().name()).isEqualTo(BARREL);
+    assertThat(barrel.getRoot()).as("once turned, the Monk is its root").isSameAs(monk);
+    assertThat(d.parent()).isSameAs(monk);
+    assertThat(d.source()).as("sent at a point, not back at the king tower").isNull();
+    assertThat(d.side()).isEqualTo(monk.side());
+    assertThat(d.aimX()).isEqualTo(king.getView().getX());
+    assertThat(d.aimY()).isEqualTo(king.getView().getY());
+    assertThat(d.target()).isNull();
+    while (!barrel.isReleased()) {
+      scene.step();
+    }
+    scene.step();
+    // Its Goblins, as many as the row makes, land by the king tower for the Monk's side.
+    assertThat(scene.spawned)
+        .hasSize(number(row("projectiles", BARREL), "SpawnCharacterCount"))
+        .allSatisfy(
+            s -> {
+              assertThat(s.source()).isSameAs(barrel);
+              assertThat(s.child().getData().name())
+                  .isEqualTo(text(row("projectiles", BARREL), "SpawnCharacter"));
+              assertThat(s.child().side()).isEqualTo(monk.side());
+            });
+    assertThat(scene.deflections).hasSize(1);
+  }
+
+  @Test
+  @DisplayName(
+      "a Goblin Barrel turned by a Deflect nearer the enemy king tower than either enemy princess"
+          + " tower is sent, with no target, at the king tower, where its Goblins land for the"
+          + " Monk's side")
+  void barrelIsSentAtTheNearestKingTower() {
+    barrelIsSentAtTheKingTower(Standard1v1Battle.PRINCESS_TOWERS);
+  }
+
+  @Test
+  @DisplayName(
+      "a Goblin Barrel turned by a Deflect nearer the enemy Royal Chef's king tower than either of"
+          + " his towers is sent, with no target, at that king tower")
+  void barrelIsSentAtTheNearestChefKingTower() {
+    barrelIsSentAtTheKingTower("King_ChefTowers");
   }
 }

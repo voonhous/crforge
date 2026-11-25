@@ -51,7 +51,8 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " where it is,"
             + " and a turn past MAX_DEFLECTION_TIMES ending the flight; held by the reference"
             + " battles of the deflect corpora: arrows-deflect-v1, barbloghero-deflect-v1,"
-            + " body-deflect-v1, bomber-evolved-deflect-v1, cannon-bomb-late-deflect-v1,"
+            + " barrel-king-deflect-v1, body-deflect-v1, bomber-evolved-deflect-v1,"
+            + " cannon-bomb-late-deflect-v1,"
             + " deflect-enchant-copy-v1,"
             + " deflect-end-poison-v1, deflect-no-root-v1, deflect-rider-shot-v1,"
             + " deflect-source-left-v1, firecracker-deflect-v1, fisherman-deflect-v1,"
@@ -63,9 +64,8 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " tower-shot-deflect-v1 and wizard-hero-air-shot-deflect-v1. Refused: the"
             + " projectiles refuseDeflection names, a pingpong projectile met at its aim on its"
             + " arrival, a projectile measured at its target's point without a chain's circle or"
-            + " of a volley's group, an area effect that follows nothing, a Goblin Barrel sent at"
-            + " a king tower, and a projectile an area effect launched that was not dropped onto"
-            + " it.")
+            + " of a volley's group, an area effect that follows nothing, and a projectile an area"
+            + " effect launched that was not dropped onto it.")
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class ProjectileDeflection {
 
@@ -532,9 +532,10 @@ public final class ProjectileDeflection {
    * <p>A projectile whose root is a king tower and that has no target, not spell-like, goes the
    * spell-like way all the same: sent at the enemy crown tower nearest the area effect, with no
    * target, or back at the king when there is none. The king tower casts the Goblin Barrel, which
-   * has no target, so a deflection sends the barrel at a crown tower of its caster's side, where
-   * its children land for the deflector's side; no gate applies to it, the gate being the spells'
-   * own.
+   * has no target, so a deflection sends the barrel at a crown tower of its caster's side, a king
+   * tower as a princess tower, the Royal Chef's too, where its children land for the deflector's
+   * side; no gate applies to it, the gate being the spells' own. So a barrel turned nearer its
+   * caster's king tower than any of his princess towers standing is sent at the king tower.
    *
    * <p>A projectile of a volley's group turned around as one, as the Princess's arrows are (see
    * {@link ProjectileGroup}), is deflected only when it is the first of the group still in the
@@ -579,10 +580,9 @@ public final class ProjectileDeflection {
    * lands on nothing, no buff and no pushback.
    *
    * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
-   * that follows nothing, a Goblin Barrel the search would send at a king tower, which no recording
-   * holds; a projectile an area effect launched that was not dropped onto it. A deflection past the
-   * most a projectile takes (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its
-   * flight.
+   * that follows nothing, a projectile an area effect launched that was not dropped onto it. A
+   * deflection past the most a projectile takes (MAX_DEFLECTION_TIMES) turns it around all the same
+   * and then ends its flight.
    *
    * @return true when the projectile was deflected
    */
@@ -649,25 +649,10 @@ public final class ProjectileDeflection {
             && projectile.getAreaTarget() == null)
         || kingSearch) {
       // A king tower is searched as a princess tower is: the nearest of them takes a spell-like
-      // projectile, the Royal Chef's king tower too. A row with its own deflection action is not
-      // sent anywhere: the point is never read.
+      // projectile, the Goblin Barrel and the king tower's shot alike, the Royal Chef's king tower
+      // too. The search keeps only the tower's position. A row with its own deflection action is
+      // not sent anywhere: the point is never read.
       tower = nearestEnemyCrownTower(deflector, projectile);
-      // The Goblin Barrel sent at a king tower, which no recording holds: refused. A king tower's
-      // shot, which homes, is sent at a king tower found as at a princess tower: the search keeps
-      // only the tower's position.
-      if (kingSearch && !projectile.getData().homing() && tower != null && tower.getData().king()) {
-        throw new UnsupportedOperationException(
-            deflector.name()
-                + " sends "
-                + projectile.name()
-                + " ("
-                + projectile.getData().name()
-                + "), cast from the king tower "
-                + source.name()
-                + ", at the king tower "
-                + tower.name()
-                + ", which is not modelled");
-      }
     }
     // The parent takes the projectile's own damage, through its damage reduction, unless the
     // projectile has hit it already: a pingpong projectile on its way back after hitting it.
