@@ -36,7 +36,10 @@ import org.crforge.core.pathfinding.index.SpatialIndex;
             + " keeps by unit tests alone. Supplied: a target is ground exactly when it is not"
             + " air, which the standard game reads from two separate columns. The bypass keeps a"
             + " dead king, as the reference battles card_Pekka, card_MegaKnight, card_MightyMiner"
-            + " and card_BossBandit do through the end delay.")
+            + " and card_BossBandit do through the end delay; in a team battle a dead king whose"
+            + " partner's king exists is refused all the same, held by the team battle reference"
+            + " battles tvt_end_king_half0 and tvt_end_king_half2, where the attackers of the"
+            + " fallen king walk on.")
 public final class ReferenceValidator {
 
   /** Mode used by the re-check of a target that is already held. */
@@ -50,12 +53,6 @@ public final class ReferenceValidator {
 
   /** Entity type fought at contact distance, which the character path accepts outright. */
   public static final int TYPE_CONTACT = 3;
-
-  /** Avatar count at which a dead tower is only rejected when it maps to a tower slot. */
-  private static final int AVATARS_WITH_TOWER_SLOTS = 4;
-
-  /** Avatar count at which a dead tower is always rejected. */
-  private static final int AVATARS_WITH_STRICT_TOWERS = 6;
 
   private ReferenceValidator() {
     // Utility class
@@ -197,14 +194,14 @@ public final class ReferenceValidator {
     if (target.air() && !cfg.attacksAir()) {
       return false;
     }
-    if (target.towerFlag()) {
-      if (queries.avatarCount() == AVATARS_WITH_TOWER_SLOTS) {
-        if (!target.alive() && queries.mapsToTowerSlot(target)) {
-          return false;
-        }
-      } else if (queries.avatarCount() == AVATARS_WITH_STRICT_TOWERS && !target.alive()) {
-        return false;
-      }
+    // In a team battle a king not alive by its own hit points is refused to a character once its
+    // partner's king exists, whatever the alive check's bypass keeps: both halves of a team's king
+    // from the fall of its pool on.
+    if (target.towerFlag()
+        && queries.teamBattle()
+        && !target.alive()
+        && queries.partnerKingPresent(target)) {
+      return false;
     }
     if (target.ground() && !cfg.attacksGround() && cfg.attacksAir()) {
       return false;

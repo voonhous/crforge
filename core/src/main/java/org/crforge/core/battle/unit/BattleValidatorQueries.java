@@ -18,8 +18,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
 
 /**
  * The validator's questions about a target that only the battle can answer: the four the
- * pending-damage rule asks of a target with damage on its way, and the attack sequence test. Every
- * other question keeps the standard answer of a one-against-one battle.
+ * pending-damage rule asks of a target with damage on its way, the attack sequence test, and in a
+ * team battle whether a king target has a partner's king. Every other question keeps the standard
+ * answer of a one-against-one battle.
  *
  * <p>The rule refuses a projectile attacker a target the damage on its way will kill: the lethal
  * test must hold, and the damage must land soon enough. It keeps the target all the same when the
@@ -43,6 +44,19 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
 final class BattleValidatorQueries implements ValidatorQueries {
 
   private final BattleWorld world;
+
+  /** Whether the battle is a team battle, whose dead kings the validator refuses by partner. */
+  @Override
+  public boolean teamBattle() {
+    return world.teamBattle();
+  }
+
+  /** Whether a king target has a partner's king in the battle: the team battle's other half. */
+  @Override
+  public boolean partnerKingPresent(TargetView target) {
+    WorldEntity king = world.entityOf(target.getEntity());
+    return king != null && world.partnerKing(king) != null;
+  }
 
   /**
    * The lethal test: nothing is lethal while the target's shield is up or while it is untouchable;

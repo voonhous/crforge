@@ -68,7 +68,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " immunity, held by hero_berserker; the crown tower percent by"
             + " BattleBuffDamagePercentTest alone. A drain on an unkillable object is refused. A"
             + " hit after the battle's end takes nothing and is accepted, so the drain still"
-            + " applies a projectile's target buff, held by random_battle16_s0038.")
+            + " applies a projectile's target buff, held by random_battle16_s0038. A target whose"
+            + " hit points are pooled with another's - the king of side 2 or 3 of a team battle -"
+            + " keeps its own dedupe list while the subtraction lowers the pool, held by the"
+            + " team battle reference battles tvt_activation_half2, tvt_princess_both_partners"
+            + " and tvt_end_king_half2.")
 public final class DamageApplication {
 
   private DamageApplication() {
@@ -249,18 +253,20 @@ public final class DamageApplication {
     if (damageId != 0 && hitPoints.isDedupeListed(damageId)) {
       return DamageResult.NOTHING;
     }
-    int shieldBefore = hitPoints.getShield();
-    int hitPointsBefore = hitPoints.getHitPoints();
     if (damageId != 0) {
       hitPoints.listDedupe(damageId, queries.battleTick());
     }
+    // The id is listed on the target's own hit points, the subtraction lowers the pool they share,
+    // when they share one.
+    HitPoints lowered = queries.subtracted(hitPoints);
+    int shieldBefore = lowered.getShield();
+    int hitPointsBefore = lowered.getHitPoints();
     queries.hitCounted();
-    DamageResult result =
-        subtract(hitPoints, amount, directionX, directionY, queries, false, false);
+    DamageResult result = subtract(lowered, amount, directionX, directionY, queries, false, false);
     int lost =
         shieldBefore > 0
-            ? shieldBefore - hitPoints.getShield()
-            : hitPointsBefore - hitPoints.getHitPoints();
+            ? shieldBefore - lowered.getShield()
+            : hitPointsBefore - lowered.getHitPoints();
     return new DamageResult(result.landed(), lost, result.died(), result.accepted());
   }
 
@@ -302,7 +308,10 @@ public final class DamageApplication {
       hitPoints.listDedupe(dedupeId, queries.battleTick());
     }
     queries.hitCounted();
-    return subtract(hitPoints, damage, directionX, directionY, queries, false, false);
+    // The dedupe list is the target's own; the subtraction lowers the pool its hit points share,
+    // when they share one.
+    return subtract(
+        queries.subtracted(hitPoints), damage, directionX, directionY, queries, false, false);
   }
 
   /**

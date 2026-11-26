@@ -40,6 +40,7 @@ public final class Heal extends RowAction {
     ActionOwner owner = holder.getOwner();
     HitPoints hp = owner == null ? null : owner.actionHitPoints();
     if (hp != null) {
+      owner.refuseHeal();
       Healing.heal(hp, value.getAsInt(), maxOverHealPercent, owner.kingTower());
     }
     return null;
