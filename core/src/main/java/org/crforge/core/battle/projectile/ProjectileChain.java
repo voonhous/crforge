@@ -14,7 +14,8 @@ import lombok.RequiredArgsConstructor;
 /**
  * The state one wave of a chain of projectiles shares - Arrows' wave of ten: the circle every
  * victim of the chain must stand in, whether its projectiles land on their ring points, and the ids
- * of the entities the chain has hit, so none is hit twice by it.
+ * of the entities the chain has hit, so none is hit twice by it, with those of them only a team
+ * battle's partner rule listed.
  */
 @Getter
 @RequiredArgsConstructor
@@ -31,6 +32,12 @@ public final class ProjectileChain {
 
   /** The ids of the entities the chain has hit, in the order they were hit. */
   private final List<Integer> hitIds = new ArrayList<>();
+
+  /**
+   * The ids among {@link #hitIds} that only a team battle's partner rule listed: the partner's king
+   * of a king the chain took, which no area of the chain has reached itself yet.
+   */
+  private final List<Integer> partnerIds = new ArrayList<>();
 
   void markRingPoints() {
     ringPoints = true;

@@ -1324,6 +1324,20 @@ public class BattleWorld implements HolderPasses {
    * @throws IllegalStateException when the team has none
    */
   CharacterEntity teamMiddle(int team) {
+    CharacterEntity middle = findTeamMiddle(team);
+    if (middle == null) {
+      throw new IllegalStateException("team " + team + " has no middle piece");
+    }
+    return middle;
+  }
+
+  /**
+   * A team's middle piece, as {@link #teamMiddle(int)} finds it, or null once it has left the
+   * battle: the tiebreaker's clearing removes both, and what asks for one then does without.
+   *
+   * @param team 0 or 1
+   */
+  CharacterEntity findTeamMiddle(int team) {
     for (BattleEntity entity : holder.entities()) {
       if (entity instanceof CharacterEntity character
           && character.getData().name().equals(Standard1v1Battle.KING_TOWER_MIDDLE)
@@ -1331,7 +1345,66 @@ public class BattleWorld implements HolderPasses {
         return character;
       }
     }
-    throw new IllegalStateException("team " + team + " has no middle piece");
+    return null;
+  }
+
+  /** The global that pools the hit points of a team's two kings in a team battle. */
+  static final String MERGE_KING_HIT_POINTS = "MERGE_MULTIPLE_SUMMONER_HEALTHS";
+
+  /** Whether the kings' hit points are pooled, once {@link #kingsPooled()} has read it. */
+  private Boolean kingsPooled;
+
+  /**
+   * Whether a team's two kings share one pool of hit points: in a team battle whose tables set
+   * {@value #MERGE_KING_HIT_POINTS}. The pool is the hit points of the team's king of side 0 or 1,
+   * the holder; its partner's king, of side 2 or 3, keeps hit points of its own that no hit lowers.
+   * A battle of one player a side pools nothing.
+   */
+  public boolean kingsPooled() {
+    if (kingsPooled == null) {
+      kingsPooled = teamBattle() && records.globalBoolean(MERGE_KING_HIT_POINTS);
+    }
+    return kingsPooled;
+  }
+
+  /**
+   * The partner's king of a king in a team battle: the king of its partner's side, the other half
+   * of the team's king; null for any other entity, and in a battle of one player a side.
+   *
+   * @param king the entity asked about
+   */
+  TowerEntity partnerKing(WorldEntity king) {
+    int partner = partner(king.side());
+    if (partner < 0 || !king.getData().king()) {
+      return null;
+    }
+    return kingTower(partner);
+  }
+
+  /**
+   * The partner's king a chain of projectiles lists beside a king its area takes, as the game's
+   * area path lists it under {@value #MERGE_KING_HIT_POINTS}: with the kings pooled ({@link
+   * #kingsPooled()}), the other half of the king's team's king; null for any other entity, and when
+   * the kings are not pooled.
+   *
+   * @param entity the entity the area takes
+   */
+  public WorldEntity chainPartner(WorldEntity entity) {
+    return kingsPooled() ? partnerKing(entity) : null;
+  }
+
+  /**
+   * The entity whose hit points a hit on an entity lowers: with the kings pooled ({@link
+   * #kingsPooled()}), the holder of the pool, the king of side 0 or 1, for a king of side 2 or 3;
+   * the entity itself for every other, and for everything in a battle of one player a side.
+   *
+   * @param entity the entity struck
+   */
+  WorldEntity poolHolder(WorldEntity entity) {
+    if (!kingsPooled() || !entity.getData().king() || entity.side() < 2) {
+      return entity;
+    }
+    return kingTower(partner(entity.side()));
   }
 
   /** The kings' elixir in a match, which collectors and deaths pay into; null outside one. */
@@ -2461,7 +2534,9 @@ public class BattleWorld implements HolderPasses {
   /**
    * A filter form area effect's buff on one object it lists: applied with the area effect as the
    * source, at its level and for its side, for the given time, the area effect its parent when the
-   * buff is controlled by its parent.
+   * buff is controlled by its parent. In a team battle a king's buff then goes to its partner's
+   * king, the other half of the team's king, unless the buff deals damage over time at level 0, and
+   * to the team's middle piece while it is in the battle, each as the king had it.
    *
    * @param areaEffect the area effect
    * @param target the object
@@ -2469,11 +2544,27 @@ public class BattleWorld implements HolderPasses {
    * @param time how long it lasts
    */
   void filterBuff(AreaEffectEntity areaEffect, WorldEntity target, BuffData buff, int time) {
-    events.areaBuff(areaEffect, buff, time, List.of(target));
+    List<WorldEntity> targets = new ArrayList<>();
+    targets.add(target);
+    // In a team battle a king's buff is carried to the other half of its team's king, unless it
+    // deals damage over time, and always to the team's middle piece.
+    TowerEntity partner = partnerKing(target);
+    if (partner != null) {
+      if (BuffComponent.damagePerSecond(buff, 0) == 0) {
+        targets.add(partner);
+      }
+      CharacterEntity middle = findTeamMiddle(team(target.side()));
+      if (middle != null) {
+        targets.add(middle);
+      }
+    }
+    events.areaBuff(areaEffect, buff, time, targets);
     AreaEffectEntity parent = buff.controlledByParent() ? areaEffect : null;
-    target
-        .getBuffs()
-        .apply(buff, time, areaEffect.getPackedLevel(), areaEffect, areaEffect.side(), parent);
+    for (WorldEntity reached : targets) {
+      reached
+          .getBuffs()
+          .apply(buff, time, areaEffect.getPackedLevel(), areaEffect, areaEffect.side(), parent);
+    }
   }
 
   /**
@@ -3598,6 +3689,18 @@ public class BattleWorld implements HolderPasses {
             buff,
             data.maximumTargets(),
             target -> projectileBuffReaches(projectile, target));
+    // In a team battle the game carries a king's buff to its partner's king and its team's middle
+    // piece, as an area effect's; no recorded team battle holds it for a projectile's circle.
+    for (WorldEntity target : targets) {
+      if (teamBattle() && target.getData().king()) {
+        throw new UnsupportedOperationException(
+            "the target buff of "
+                + projectile.getData().name()
+                + " on the circle of its impact over "
+                + target.name()
+                + ", a king of a team battle, is not modelled");
+      }
+    }
     events.projectileBuff(projectile, buff, time, targets);
     for (WorldEntity target : targets) {
       target
@@ -3634,6 +3737,33 @@ public class BattleWorld implements HolderPasses {
   void notAttackingBuff(CharacterEntity unit, int time) {
     BuffData buff = buffData(unit.getData().buffWhenNotAttacking());
     unit.getBuffs().apply(buff, time, unit.getPackedLevel(), unit, unit.side());
+  }
+
+  /**
+   * Refuses a projectile's impact on its one target, a king of a team battle, by the part of the
+   * hit no recorded team battle holds: the row's on-hit action. The rest of the impact strikes the
+   * king as it is, a king of side 2 or 3 included: the game's single-target impact hands the struck
+   * king's own hit points to the damage entry, whose dealer moves the subtraction to the pool, and
+   * the target buff, before or after the damage, goes to the struck king alone (no copy to its
+   * partner's king or the team's middle piece), held by the team battle reference battles
+   * tvt2_lightning_king0, tvt2_lightning_king2 and tvt2_edragon_king2. Only the travelling hit of a
+   * flying body swaps a king of side 2 or 3 for the pool's holder (see {@link
+   * HitQueue#travellingHit}).
+   *
+   * @param projectile the projectile landing
+   * @param target its target
+   */
+  public void refuseTeamKingImpact(ProjectileEntity projectile, WorldEntity target) {
+    if (teamBattle()
+        && target.getData().king()
+        && projectile.getData().onHitTargetAction() != null) {
+      throw new UnsupportedOperationException(
+          "the on-hit action of "
+              + projectile.getData().name()
+              + " on "
+              + target.name()
+              + ", a king of a team battle, is not modelled");
+    }
   }
 
   /**

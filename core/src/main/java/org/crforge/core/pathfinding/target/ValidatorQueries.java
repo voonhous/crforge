@@ -11,8 +11,8 @@ package org.crforge.core.pathfinding.target;
  *
  * <p>Every method has a default that gives the answer the standard 1v1 mode gives for an ordinary
  * troop or crown tower, so a caller only overrides what its own mode changes. The two game-mode
- * questions ({@link #avatarCount()} and {@link #excludedConfigKey()}) describe the match rather
- * than the entities.
+ * questions ({@link #teamBattle()} and {@link #excludedConfigKey()}) describe the match rather than
+ * the entities.
  */
 public interface ValidatorQueries {
 
@@ -22,11 +22,11 @@ public interface ValidatorQueries {
   }
 
   /**
-   * Number of avatars in the match. Two tower rules only apply with four or six avatars, so the
-   * standard mode's two switch both of them off.
+   * Whether the match is a team battle, four players two a team, where the king rule of {@link
+   * #partnerKingPresent(TargetView)} applies; the standard mode's battle of two is not one.
    */
-  default int avatarCount() {
-    return 2;
+  default boolean teamBattle() {
+    return false;
   }
 
   /** Identity of the configuration row no entity may ever be targeted through. */
@@ -40,10 +40,10 @@ public interface ValidatorQueries {
   }
 
   /**
-   * True when the target's side maps to a tower slot of the match. With four avatars a dead tower
-   * is only rejected when it does map to one.
+   * True when a king target has a partner's king in the match, the other half of its team's king in
+   * a team battle: a king not alive by its own hit points is then refused to a character.
    */
-  default boolean mapsToTowerSlot(TargetView target) {
+  default boolean partnerKingPresent(TargetView target) {
     return false;
   }
 

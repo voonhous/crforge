@@ -280,6 +280,12 @@ public class ProjectileEntity extends BattleEntity
   /** The ids of the entities its flying body has hit, which it does not hit again. */
   @Getter private final List<Integer> hitIds = new ArrayList<>();
 
+  /**
+   * The ids of the kings of side 2 or 3 of a team battle its flying body has hit through the pool's
+   * holder, whose id {@link #hitIds} then lists in theirs.
+   */
+  @Getter private final List<Integer> swappedKingIds = new ArrayList<>();
+
   /** How many targets a hopping projectile has been launched at, its first included. */
   @Getter private int chainedHits;
 
