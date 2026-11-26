@@ -29,7 +29,7 @@ import lombok.Setter;
 @Setter
 public class GridEntity {
 
-  /** Identity of the entity within the match. The overlay's per-side hash folds this value in. */
+  /** Identity of the entity within the match. The overlay's per-team hash folds this value in. */
   private int id;
 
   /** Readable name, used by fixtures and diagnostics rather than by any rule. */

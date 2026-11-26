@@ -20,12 +20,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>The build runs once per tick, before any component pass, over the match's live entity list in
  * creation order. Every entity that is of the routing virtual type and answers that it occludes has
  * a square box stamped around it at the grid's building cost, and its id is folded into a running
- * hash of its own side. Afterwards each side's change flag says whether that side's hash differs
- * from the previous build's, which is what route retention consults to decide whether a cached
- * route may be kept.
+ * hash of its own team ({@link CellGrid#team(int)}: its side in a battle of two, sides 0 and 2 or
+ * sides 1 and 3 in a team battle). Afterwards each team's change flag says whether that team's hash
+ * differs from the previous build's, which is what route retention consults to decide whether a
+ * cached route may be kept.
  *
  * <p>The flags therefore react to <b>which</b> occluders exist and in what order, not to where they
- * are: a building that appears or disappears raises its side's flag for one tick, while a building
+ * are: a building that appears or disappears raises its team's flag for one tick, while a building
  * that merely moves does not.
  *
  * <p>An entity answers that it occludes when it is a building, or when its row sets IsOccluder and
@@ -39,7 +40,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.TRACED,
     note =
         "Settled against the walks of the reference battles, which route around the tower"
-            + " footprints stamped here, and against the per-side change flags the reference route"
+            + " footprints stamped here, and against the per-team change flags the reference route"
             + " retention reads. The hero Elite Archer's decoy, an IsOccluder character, stands"
             + " still for its whole life in its reference battle. The rasteriser's handling of a"
             + " moving occluder is held by its own tests.")
@@ -48,7 +49,7 @@ public final class FootprintOverlay {
   /** Virtual type of the entities the build considers; everything else is skipped. */
   private static final int ROUTING_ENTITY_TYPE = 5;
 
-  /** Number of sides that carry a hash and a change flag. */
+  /** Number of teams that carry a hash and a change flag. */
   private static final int SIDES = 2;
 
   /** How far the running hash is rotated right before each id is folded in. */
@@ -129,7 +130,7 @@ public final class FootprintOverlay {
   /**
    * Rebuilds the overlay for one tick from the match's live entity list.
    *
-   * <p>The list must be in creation order, because the per-side hash folds ids in that order and
+   * <p>The list must be in creation order, because the per-team hash folds ids in that order and
    * two different orders of the same ids hash differently.
    *
    * <p>When dynamic occlusions are disabled nothing is stamped, the overlay stays inactive and both
@@ -165,17 +166,20 @@ public final class FootprintOverlay {
       if (packed != null) {
         stamped.add(packed);
       }
-      int side = entity.getSide();
-      if (Integer.compareUnsigned(side, SIDES - 1) <= 0) {
-        hashes[side] =
-            Integer.rotateRight(hashes[side], HASH_ROTATION) + entity.getId() + HASH_ID_OFFSET;
+      // The hash is the entity's team's: its side's in a battle of two, and in a team battle the
+      // one sides 0 and 2, or sides 1 and 3, share. A team outside 0..1, the neutral one or a
+      // negative one, folds into none.
+      int team = CellGrid.team(entity.getSide());
+      if (Integer.compareUnsigned(team, SIDES - 1) <= 0) {
+        hashes[team] =
+            Integer.rotateRight(hashes[team], HASH_ROTATION) + entity.getId() + HASH_ID_OFFSET;
       }
     }
     updateFlags(grid, hashes);
     return stamped;
   }
 
-  /** Stores the new per-side hashes and raises the change flag of every side whose hash moved. */
+  /** Stores the new per-team hashes and raises the change flag of every team whose hash moved. */
   private static void updateFlags(CellGrid grid, int[] hashes) {
     int[] previousHashes = grid.getHash();
     int[] changed = new int[SIDES];
