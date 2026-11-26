@@ -277,7 +277,9 @@ public class Standard1v1Battle {
         sides.size() == BattleWorld.TEAM_BATTLE,
         () -> "a team battle of four sides' towers, got " + sides.size());
     this.towers = List.copyOf(sides);
-    this.world = new BattleWorld(tileMap);
+    // Which of a cell's bits above the modelled ones the game reads is not settled: a team battle
+    // refuses a route or a placement that reads such a cell.
+    this.world = new BattleWorld(tileMap.refusingUnmodelledCells());
     world.setAvatarCount(BattleWorld.TEAM_BATTLE);
     world.load(tables);
     this.battle = new Battle(world.getHolder(), BattleMode.ENDLESS);
@@ -740,8 +742,31 @@ public class Standard1v1Battle {
       int[] playerWords,
       List<int[]> slots,
       List<List<String>> excludedEvolutions) {
+    return startTeamMatch(
+        LadderMatch.TEAM_GAME_MODE, decks, playerWords, slots, excludedEvolutions);
+  }
+
+  /**
+   * Plays a team battle as a team match under one of the team rows ({@link
+   * LadderMatch#TEAM_GAME_MODES}), set up as {@link #startTeamMatch(List, int[], List, List)} sets
+   * up the Ladder's: the match reads its timeline and start cooldown from the row it is played
+   * under.
+   *
+   * @param gameMode the team row the match is played under
+   * @param decks each side's deck, by card row name, side 0 to side 3
+   * @param playerWords each side's word, added to its shuffle's draw
+   * @param slots each side's slot flags, by deck index
+   * @param excludedEvolutions each side's evolutions excluded from the battle, by row name
+   * @return the match
+   */
+  public LadderMatch startTeamMatch(
+      String gameMode,
+      List<List<String>> decks,
+      int[] playerWords,
+      List<int[]> slots,
+      List<List<String>> excludedEvolutions) {
     checkState(world.teamBattle(), "only a team battle plays the team match");
-    return startMatch(LadderMatch.TEAM_GAME_MODE, decks, playerWords, slots, excludedEvolutions);
+    return startMatch(gameMode, decks, playerWords, slots, excludedEvolutions);
   }
 
   /** Sets the match up under its game mode row, for as many players as the battle has. */

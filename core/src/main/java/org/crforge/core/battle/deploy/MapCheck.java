@@ -70,6 +70,8 @@ public final class MapCheck {
 
   /** Whether one 500-unit map cell may take the card. */
   static boolean cellOk(TileMap tileMap, int col, int row, DeployCard card) {
+    // A team battle's map refuses a cell whose bits above the modelled ones the placement reads.
+    tileMap.checkModelled(col, row, "a placement");
     int bits = tileMap.bits(col, row);
     if ((bits & WATER) != 0) {
       return card.canPlaceOnWater();

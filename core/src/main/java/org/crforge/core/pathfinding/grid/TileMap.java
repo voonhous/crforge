@@ -27,7 +27,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * </ul>
  *
  * <p>Higher bits exist in the published data for a few cells but no routing rule reads them, so
- * they are masked away at construction and this class never exposes them.
+ * they are masked away at construction and {@link #bits} never exposes them. Which of them the game
+ * reads is not settled: a map made to refuse them ({@link #refusingUnmodelledCells}), as a team
+ * battle's is, keeps which cells set one and refuses a route or a placement that reads such a cell
+ * ({@link #checkModelled}).
  *
  * <p>Instances are immutable.
  */
@@ -36,7 +39,8 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled: the standard arena's cells, and the road, not-placeable, water and"
             + " blocked bits. Not settled: what the higher bits of a few published cells mean;"
-            + " they are masked away and never read.")
+            + " they are masked away and never read, and a team battle's map refuses a route or a"
+            + " placement that reads such a cell.")
 public final class TileMap {
 
   /** Side length of one routing cell in game units. */
@@ -65,6 +69,12 @@ public final class TileMap {
   private final int height;
   private final int[] bits;
 
+  /** Each cell's bits above {@link #ROUTING_BITS_MASK}, as published. */
+  private final int[] unmodelled;
+
+  /** Whether a route or a placement reading a cell with unmodelled bits is refused. */
+  private final boolean refusesUnmodelled;
+
   /**
    * The road cells in the lane search's order, as {@link LaneAssignment#roadCells} lists them: the
    * map never changes, so they are listed once.
@@ -92,10 +102,67 @@ public final class TileMap {
     this.width = width;
     this.height = height;
     this.bits = new int[rawValues.length];
+    this.unmodelled = new int[rawValues.length];
     for (int i = 0; i < rawValues.length; i++) {
       this.bits[i] = rawValues[i] & ROUTING_BITS_MASK;
+      this.unmodelled[i] = rawValues[i] & ~ROUTING_BITS_MASK;
     }
+    this.refusesUnmodelled = false;
     this.roadCells = LaneAssignment.roadCells(width, height, this::bits);
+  }
+
+  /** The same map, refusing or not a read of a cell with unmodelled bits. */
+  private TileMap(TileMap map, boolean refusesUnmodelled) {
+    this.width = map.width;
+    this.height = map.height;
+    this.bits = map.bits;
+    this.unmodelled = map.unmodelled;
+    this.roadCells = map.roadCells;
+    this.refusesUnmodelled = refusesUnmodelled;
+  }
+
+  /**
+   * The same map, which refuses a route or a placement that reads a cell whose published value sets
+   * a bit above {@link #ROUTING_BITS_MASK}: what such a bit means to the game is not settled, so a
+   * battle that reads one is refused rather than read with it masked away. A team battle's map is
+   * made so; the standard arena's map of a battle of two keeps them masked, which its recorded
+   * battles hold.
+   */
+  public TileMap refusingUnmodelledCells() {
+    return new TileMap(this, true);
+  }
+
+  /** A cell's published bits above {@link #ROUTING_BITS_MASK}; 0 for most cells. */
+  public int unmodelledBits(int col, int row) {
+    if (!contains(col, row)) {
+      throw new IndexOutOfBoundsException("Cell (" + col + ", " + row + ") is outside the map");
+    }
+    return unmodelled[row * width + col];
+  }
+
+  /**
+   * Refuses a read of a cell with unmodelled bits on a map made to refuse them ({@link
+   * #refusingUnmodelledCells}); does nothing on any other map or cell.
+   *
+   * @param col the cell's column
+   * @param row the cell's row
+   * @param reader what reads it, as the refusal names it: a route or a placement
+   * @throws UnsupportedOperationException for such a read
+   */
+  public void checkModelled(int col, int row, String reader) {
+    if (refusesUnmodelled && contains(col, row) && unmodelled[row * width + col] != 0) {
+      throw new UnsupportedOperationException(
+          "the map cell ("
+              + col
+              + ", "
+              + row
+              + ") read by "
+              + reader
+              + " in a team battle, whose published value "
+              + (bits[row * width + col] | unmodelled[row * width + col])
+              + " sets bits above the seven the routing models, whose meaning to the game no"
+              + " recorded team battle holds");
+    }
   }
 
   /**

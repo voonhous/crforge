@@ -57,7 +57,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " Held: a Giant cooked for while walking, a Giant chosen over a Musketeer and the"
             + " second pancake that follows, a damaged Giant, and the slower cooking after a"
             + " tower falls. Not modelled: the bar's share that switches the towers' animation,"
-            + " which only shows something. Refused: the row columns no shipped row sets.")
+            + " which only shows something. Refused: the row columns no shipped row sets, and a"
+            + " throw in a team battle, whose target among the team's two players' troops no"
+            + " recorded team battle holds (its cooking reads the Chef's own tower, as here).")
 public final class ChefCooking extends RowAction {
 
   /** The step every countdown loses. */
@@ -211,11 +213,21 @@ public final class ChefCooking extends RowAction {
       }
     }
 
-    /** Starts a throw when there is a target, a tower and the tower's attack lets it go. */
+    /**
+     * Starts a throw when there is a target, a tower and the tower's attack lets it go. In a team
+     * battle a target found is refused: the game cooks from the Chef's own tower there as in a
+     * battle of two, but how it picks the target among the troops of the team's two players is held
+     * by no recorded team battle.
+     */
     private void tryThrow() {
       int target = chooseTarget();
       if (target == NONE) {
         return;
+      }
+      if (host.teamBattle()) {
+        throw new UnsupportedOperationException(
+            "the Royal Chef's pancake thrown in a team battle, whose choice of target among the"
+                + " troops of the team's two players no recorded team battle holds");
       }
       int tower = chooseTower(target);
       if (tower == NONE || !host.found(tower)) {
