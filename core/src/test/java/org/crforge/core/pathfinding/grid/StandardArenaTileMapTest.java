@@ -49,6 +49,22 @@ class StandardArenaTileMapTest {
     assertThat(game.get(0)).hasSize(map.width());
   }
 
+  @Test
+  @DisplayName("the tables read the standard arena's tile map file as the bundled map")
+  void theTablesReadTheStandardTileMapAsTheBundledMap() {
+    TileMap read = GameTables.loadConfigured().tileMap(TILE_MAP);
+    TileMap bundled = TileMap.standard1v1();
+    assertThat(read.width()).isEqualTo(bundled.width());
+    assertThat(read.height()).isEqualTo(bundled.height());
+    for (int row = 0; row < bundled.height(); row++) {
+      for (int col = 0; col < bundled.width(); col++) {
+        assertThat(read.bits(col, row))
+            .as("cell " + col + ", " + row)
+            .isEqualTo(bundled.bits(col, row));
+      }
+    }
+  }
+
   /**
    * The cells of a tile map file as the game writes it: a header of three lines (the name, the
    * column names and their types), then one line per row of the map, top row first, each led by an
