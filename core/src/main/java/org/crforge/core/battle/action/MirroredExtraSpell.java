@@ -21,8 +21,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled and held by evo_goblinbarrel_on_musketeer: a cast projectile as the cause, the"
-            + " start, aim, side, level and creation order of the extra projectile. Refused: any"
-            + " cause other than a projectile.")
+            + " start, aim, side, level and creation order of the extra projectile; in a team"
+            + " battle the same, no side or team turning it, held by tvt2_decoy_goblinbarrel_s2"
+            + " and _s3. Refused: any cause other than a projectile.")
 public final class MirroredExtraSpell extends RowAction {
 
   /** The projectile row the extra spell throws. */

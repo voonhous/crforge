@@ -22,6 +22,12 @@ public interface CookingHost {
    */
   List<Integer> towers();
 
+  /**
+   * Whether the battle is a team battle, four players two a team, where the run refuses its first
+   * throw.
+   */
+  boolean teamBattle();
+
   /** Whether a tower is in the attacking state. */
   boolean attacking(int towerId);
 

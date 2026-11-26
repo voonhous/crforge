@@ -163,7 +163,9 @@ public final class MovementState {
     MovementState state = new MovementState();
     state.targetX = x;
     state.targetY = y;
-    state.routeDirY = side == 0 ? DIRECTION_SCALE : -DIRECTION_SCALE;
+    // Team 0, the bottom half, faces up the arena; a team battle's sides 2 and 3 face as their
+    // team's side 0 and side 1 do.
+    state.routeDirY = side == 0 || side == 2 ? DIRECTION_SCALE : -DIRECTION_SCALE;
     return state;
   }
 

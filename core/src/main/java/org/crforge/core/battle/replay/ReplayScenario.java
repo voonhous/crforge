@@ -80,6 +80,16 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * version's command types; a version whose generated cases' fields are not established has the
  * whole case refused.
  *
+ * <p>A team battle, four players two a team under a game mode row of {@link #TEAM_MODES}, is read
+ * as a battle of one player a side is, for each of its four avatars, decks and players' data, each
+ * command naming its player by its avatar's account id, and played as the team match. Of a team
+ * battle only what a recorded team battle holds is read: a map of {@link #TEAM_TILE_MAPS}, and each
+ * player's tower selection placed from its team battle spawn group. Each princess tower stands at
+ * its own selection's level, raised by the card level minimum as in a battle of two (the game asks
+ * the level rule for partners, the higher of the two under the Ladder level adjustment, for a king
+ * only, and the minimum does not reach a king). The avatars and decks a battle holds must be as
+ * many as its game mode row's {@value #PLAYERS} column gives players ({@link #PLAYERS_BY_KIND}).
+ *
  * <p>{@link #translate} stops at the first input it cannot map. {@link #survey} reads the same
  * scenario the same way and lists every refusal it meets instead: each field and pinned value it
  * refuses, and each command it cannot read, going on to the next. A refusal that leaves nothing to
@@ -266,6 +276,105 @@ public final class ReplayScenario {
           new EventMode(
               "2", Set.of(DECK_SELECTION, "Icon", "TID", "ShowTrophies", "ValidChallengeMode")));
 
+  /** The game mode column that names who plays: one player a side, or two a team. */
+  static final String PLAYERS = "Players";
+
+  /** The {@value #PLAYERS} value of a battle of one player a side. */
+  static final String ONE_A_SIDE_PLAYERS = "PvP";
+
+  /** The {@value #PLAYERS} value of a team battle, two players a team. */
+  static final String TEAM_PLAYERS = "TvT";
+
+  /**
+   * The players of a battle by its game mode row's {@value #PLAYERS} value: two, sides 0 and 1, for
+   * {@value #ONE_A_SIDE_PLAYERS}; four for {@value #TEAM_PLAYERS}, sides 0 and 2 against sides 1
+   * and 3. A battle holds one avatar ({@code avatarN}), one deck ({@code deckN}) and one player
+   * data entry per player. A row of any other value is read as one of two players and its mode
+   * refused.
+   */
+  static final Map<String, Integer> PLAYERS_BY_KIND =
+      Map.of(ONE_A_SIDE_PLAYERS, ScenarioPlan.ONE_A_SIDE, TEAM_PLAYERS, ScenarioPlan.TEAM_BATTLE);
+
+  /** The game mode row of the Ladder's team battles, two players a team. */
+  public static final String LADDER_TEAM_VS_TEAM = "Ladder_TeamVsTeam";
+
+  /** The game mode row of the friendly team battles, two players a team. */
+  public static final String FRIENDLY_TEAM_VS_TEAM = LadderMatch.FRIENDLY_TEAM_GAME_MODE;
+
+  /**
+   * The game modes of a team battle whose battles are read, by row name, each with the battle
+   * header values it is pinned to. Each is its own row, of {@value #PLAYERS} {@value
+   * #TEAM_PLAYERS}, read from its own values: a battle is read for its four players and played as
+   * the team match.
+   *
+   * <p>{@value #LADDER_TEAM_VS_TEAM}, the Ladder's team battles: its row differs from the Ladder
+   * row in who plays, whether a bot may practise it and its presentation. The header a recorded
+   * battle of it writes is not established; it is pinned to the Ladder header until one is.
+   *
+   * <p>{@value #FRIENDLY_TEAM_VS_TEAM}, the friendly team battles: its row differs from the {@value
+   * #LADDER_TEAM_VS_TEAM} row in the card level adjustment, {@value #FRIENDLY}, its timeline, which
+   * the match reads from it, and the columns of {@link #FRIENDLY_TEAM_OUTSIDE} the battle reads
+   * nothing of; it is checked so. Under its adjustment every king and princess tower stands at
+   * {@link #friendlyLevel} and the deck holds every card at its rarity's {@value
+   * #TOURNAMENT_LEVEL_INDEX}, while a play runs at its item's level, the deck card's as the replay
+   * gives it or as the adjustment puts it. Pinned to the Ladder header, as a recorded battle of it
+   * writes it.
+   */
+  static final Map<String, Map<String, String>> TEAM_MODES =
+      Map.of(LADDER_TEAM_VS_TEAM, LADDER_HEADER, FRIENDLY_TEAM_VS_TEAM, LADDER_HEADER);
+
+  /**
+   * The columns the {@value #FRIENDLY_TEAM_VS_TEAM} row may set differently from the {@value
+   * #LADDER_TEAM_VS_TEAM} row: its name and card level adjustment, which the reading of the levels
+   * takes, its timeline, which the match reads, its icon, text id and whether trophies are shown,
+   * which are presentation, and whether it is a challenge, friendly or Ladder mode, which is
+   * matchmaking.
+   */
+  private static final Set<String> FRIENDLY_TEAM_OUTSIDE =
+      Set.of(
+          "Name",
+          CARD_LEVEL_ADJUSTMENT,
+          "BattleTimeline",
+          "Icon",
+          "TID",
+          "ShowTrophies",
+          "ValidChallengeMode",
+          "ValidFriendlyMode",
+          "ValidLadderMode");
+
+  /**
+   * How a deck card's level is read in a team battle under {@link #FRIENDLY}: the deck holds every
+   * card at its rarity's tournament level, and a play runs at its item's level, which may be the
+   * deck card's as the replay gives it or as the adjustment puts it.
+   */
+  static final String TEAM_DECK_LEVEL_UNDER_FRIENDLY =
+      "consumed: under the "
+          + FRIENDLY
+          + " card level adjustment the game puts every deck card at its rarity's "
+          + TOURNAMENT_LEVEL_INDEX
+          + ", plus its RelativeLevel, plus 1; in a team battle a play runs at its item's level,"
+          + " checked against that level and against the card's level index as given, plus its"
+          + " rarity's RelativeLevel, plus 1";
+
+  /** The map of most team locations, the royal arena's, its location's tile data. */
+  public static final String TEAM_TILE_MAP = "tilemaps/tilemap_2v2.csv";
+
+  /**
+   * The maps of the team battles a recorded team battle holds, each a team location's tile data:
+   * {@value #TEAM_TILE_MAP} and the battle ground's, which has no river. The game loads the map a
+   * battle's location names as its tile data and plays on it, with no rule of its own for any.
+   */
+  public static final Set<String> TEAM_TILE_MAPS =
+      Set.of(TEAM_TILE_MAP, "tilemaps/tilemap_BattleGround_2v2.csv");
+
+  /**
+   * The princess towers' selection, the tower selection a team battle's player brings by default.
+   */
+  public static final String TEAM_TOWER_SELECTION = "King_PrincessTowers";
+
+  /** The support card column that names a tower selection's spawn group in a team battle. */
+  public static final String TEAM_SPAWN_GROUP = "SpawnGroup2v2";
+
   /**
    * How a Ladder battle's event block is read: the game reads an event's category and settings only
    * to choose the cards of a draft, which a mode whose decks are the players' own does not run.
@@ -302,7 +411,7 @@ public final class ReplayScenario {
           + " Mirror's or a variant card's play of a raised card is unsupported";
 
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
-  static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
+  public static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
 
   /**
    * How the battle header's {@code arena} is read: the players' trophy arena, whose row holds
@@ -340,7 +449,7 @@ public final class ReplayScenario {
   /** The level field of a play's packed item: seven bits from bit 10. */
   static final int ITEM_LEVEL_SHIFT = 10;
 
-  private static final int ITEM_LEVEL_MASK = 0x7f;
+  static final int ITEM_LEVEL_MASK = 0x7f;
 
   /** The cosmetic field of a play's packed item: two bits from bit 17. */
   private static final int ITEM_COSMETIC_SHIFT = 17;
@@ -416,6 +525,24 @@ public final class ReplayScenario {
    */
   private final List<List<String>> excludedEvolutions = new ArrayList<>();
 
+  /**
+   * The battle's players, by its game mode row's {@value #PLAYERS} ({@link #PLAYERS_BY_KIND}): two,
+   * or four in a team battle.
+   */
+  private int players = ScenarioPlan.ONE_A_SIDE;
+
+  /** The game mode row of a team battle ({@link #TEAM_MODES}), or null for any other battle. */
+  private GameRow teamMode;
+
+  /** The map the battle is played on: its location's tile data. */
+  private String tileMap;
+
+  /**
+   * Whether the battle is a team battle under the {@value #FRIENDLY} card level adjustment, whose
+   * plays are checked against the levels the replay gives and those the adjustment puts.
+   */
+  private boolean friendlyTeam;
+
   /** The refusals a survey has met, or null outside a survey, when a refusal is thrown. */
   private List<Refusal> refusals;
 
@@ -480,13 +607,19 @@ public final class ReplayScenario {
   }
 
   /**
-   * Translates a scenario.
+   * Translates a scenario: a battle of one player a side or a team battle, whose plan holds four
+   * players ({@link ScenarioPlan#players}), played as the team match ({@link ReplayBattle#build}).
    *
    * @param scenario the scenario document
-   * @return the production inputs
+   * @return the production inputs, of two players or four
    * @throws UnsupportedScenarioException for an input the production simulator has no mapping for
    */
   public ScenarioPlan translate(JsonNode scenario) {
+    return read(scenario);
+  }
+
+  /** Reads a scenario into the production inputs, as {@link #translate} does. */
+  ScenarioPlan read(JsonNode scenario) {
     if (format == null) {
       // Nothing to read the scenario by: this ends a survey too.
       throw new UnsupportedScenarioException(
@@ -522,13 +655,19 @@ public final class ReplayScenario {
             "evt",
             ReplayCapture.FIELD));
     JsonNode battle = required(scenario, "battle");
+    players = players(battle);
+    List<String> sideFields = new ArrayList<>(battleFieldsBeyondThePins());
+    for (int side = 0; side < players; side++) {
+      sideFields.add("deck" + side);
+      sideFields.add("avatar" + side);
+    }
     onlyFields(
         battle,
         "battle",
         with(
             format.battlePins().keySet(),
             with(
-                battleFieldsBeyondThePins(),
+                sideFields,
                 "gmt",
                 "plt",
                 "t1s",
@@ -541,10 +680,6 @@ public final class ReplayScenario {
                 "te",
                 "tps",
                 "arena",
-                "deck0",
-                "avatar0",
-                "deck1",
-                "avatar1",
                 "location",
                 "hbd")));
     Map<String, String> modeHeader = gameMode(battle);
@@ -578,25 +713,28 @@ public final class ReplayScenario {
 
     List<List<String>> decks = new ArrayList<>();
     List<int[]> deckLevels = new ArrayList<>();
+    List<int[]> givenLevels = new ArrayList<>();
     List<int[]> slotFlags = new ArrayList<>();
     List<int[]> accounts = new ArrayList<>();
     List<String> arenas = new ArrayList<>();
     List<Standard1v1Battle.Towers> towers = new ArrayList<>();
-    for (int side = 0; side < 2; side++) {
+    for (int side = 0; side < players; side++) {
       JsonNode deck = required(battle, "deck" + side);
       List<String> names = new ArrayList<>();
       List<Integer> levels = new ArrayList<>();
+      List<Integer> given = new ArrayList<>();
       List<Integer> slots = new ArrayList<>();
       for (JsonNode entry : required(deck, "sp")) {
         GameRow card = cardRow(required(entry, "d").asInt(), "battle.deck" + side + ".sp");
         names.add(card.name());
-        levels.add(
-            level(friendlyLevel > 0 ? tournamentLevelIndex(card) : deckLevelIndex(entry), card));
+        given.add(level(deckLevelIndex(entry), card));
+        levels.add(friendlyLevel > 0 ? level(tournamentLevelIndex(card), card) : given.getLast());
         slots.add(slotFlags(entry, "battle.deck" + side + ".sp[" + slots.size() + "]"));
         onlyFields(entry, "battle.deck" + side + ".sp", with(format.cardCarried(), "d", "l", "el"));
       }
       decks.add(names);
       deckLevels.add(levels.stream().mapToInt(Integer::intValue).toArray());
+      givenLevels.add(given.stream().mapToInt(Integer::intValue).toArray());
       slotFlags.add(slots.stream().mapToInt(Integer::intValue).toArray());
       towers.add(towers(deck, side));
       onlyFields(deck, "battle.deck" + side, with(format.deckCarried(), "sp", "sc"));
@@ -611,7 +749,8 @@ public final class ReplayScenario {
       minimum = cardLevelMinimum(battle);
     }
     // The levels the battle's deck holds: each deck card's raised by the minimum. A play is checked
-    // against them and the levels as given.
+    // against them and the levels as given. In a team battle under the Friendly adjustment the deck
+    // holds the tournament levels, and a play is checked against them and the replay's levels.
     List<int[]> raisedLevels = new ArrayList<>();
     for (int[] levels : deckLevels) {
       int[] raised = levels.clone();
@@ -623,15 +762,19 @@ public final class ReplayScenario {
     mapping.put(
         "battle.deckN.sp[i].d",
         "consumed: the card row, table id times a million plus row index; the deck's order kept");
+    friendlyTeam = friendlyLevel > 0 && teamMode != null;
+    List<int[]> checkedLevels = friendlyTeam ? givenLevels : deckLevels;
     mapping.put(
         "battle.deckN.sp[i].l",
-        friendlyLevel > 0
-            ? DECK_LEVEL_UNDER_FRIENDLY
-            : "consumed: the card's level index, plus its rarity's RelativeLevel, plus 1; absent is"
-                + " level index 0, as the game reads it"
-                + (format.ladderEvents()
-                    ? "; below the card level minimum the battle's deck holds it at the minimum"
-                    : ""));
+        friendlyTeam
+            ? TEAM_DECK_LEVEL_UNDER_FRIENDLY
+            : friendlyLevel > 0
+                ? DECK_LEVEL_UNDER_FRIENDLY
+                : "consumed: the card's level index, plus its rarity's RelativeLevel, plus 1; absent is"
+                    + " level index 0, as the game reads it"
+                    + (format.ladderEvents()
+                        ? "; below the card level minimum the battle's deck holds it at the minimum"
+                        : ""));
     mapping.put(
         "battle.deckN.sp[i].el",
         "consumed: the deck card's slot flags, bit 0 the deck's evolution slot and bit 1 its hero"
@@ -643,7 +786,7 @@ public final class ReplayScenario {
     for (String field : format.deckCarried()) {
       mapping.put("battle.deckN." + field, "carried: no battle input");
     }
-    if (accounts.get(0)[0] == accounts.get(1)[0] && accounts.get(0)[1] == accounts.get(1)[1]) {
+    if (sharesAnAccount(accounts)) {
       refuse("two sides of one account, whose commands name no side", "battle.avatarN.accountID");
     }
     List<ScenarioPlan.Play> plays = new ArrayList<>();
@@ -652,7 +795,15 @@ public final class ReplayScenario {
     for (JsonNode command : required(scenario, "cmd")) {
       try {
         command(
-            command, index, decks, deckLevels, raisedLevels, slotFlags, accounts, plays, abilities);
+            command,
+            index,
+            decks,
+            checkedLevels,
+            raisedLevels,
+            slotFlags,
+            accounts,
+            plays,
+            abilities);
       } catch (UnsupportedScenarioException e) {
         // A survey lists a command it cannot read and goes on to the next one.
         if (refusals == null) {
@@ -691,7 +842,8 @@ public final class ReplayScenario {
             + " unsupported");
     mapping.put(
         "cmd[i].c.idHi/idLo",
-        "consumed: the commanding side, the side whose avatar has this account id");
+        "consumed: the commanding side, the side whose avatar has this account id"
+            + (players == ScenarioPlan.TEAM_BATTLE ? ", avatar 0 to 3 in a team battle" : ""));
     mapping.put(
         "cmd[i].c.cgid",
         "consumed (ability command only): the game object id of the unit the command names,"
@@ -747,8 +899,10 @@ public final class ReplayScenario {
         abilities,
         minimum,
         excludedEvolutions.isEmpty()
-            ? ScenarioPlan.NONE_EXCLUDED
-            : List.copyOf(excludedEvolutions));
+            ? ScenarioPlan.noneExcluded(players)
+            : List.copyOf(excludedEvolutions),
+        teamMode != null ? tileMap : STANDARD_TILE_MAP,
+        teamMode != null ? teamMode.name() : LadderMatch.GAME_MODE);
   }
 
   /**
@@ -821,6 +975,74 @@ public final class ReplayScenario {
   }
 
   /**
+   * The battle's players by its game mode row's {@value #PLAYERS} column ({@link
+   * #PLAYERS_BY_KIND}), checked against the avatars and decks the battle header holds: a battle of
+   * as many avatars and decks as the row gives players is read, any other count refused. A game
+   * mode id that names no row, or a row of another {@value #PLAYERS} value, is read as a battle of
+   * one player a side, and the game mode's own reading refuses it.
+   *
+   * @return the players: two, or four in a team battle
+   */
+  private int players(JsonNode battle) {
+    JsonNode id = battle.get("gamemode");
+    Optional<GameRow> mode = id == null || !id.isInt() ? Optional.empty() : find(id.asInt());
+    if (mode.isEmpty() || !mode.get().has(PLAYERS)) {
+      return ScenarioPlan.ONE_A_SIDE;
+    }
+    String kind = mode.get().string(PLAYERS);
+    Integer players = PLAYERS_BY_KIND.get(kind);
+    if (players == null) {
+      return ScenarioPlan.ONE_A_SIDE;
+    }
+    int avatars = numbered(battle, "avatar");
+    int decks = numbered(battle, "deck");
+    if (avatars != players || decks != players) {
+      refuse(
+          "a battle of "
+              + avatars
+              + " avatars and "
+              + decks
+              + " decks, where the game mode "
+              + mode.get().name()
+              + " of "
+              + PLAYERS
+              + " "
+              + kind
+              + " gives "
+              + players
+              + " players",
+          "battle.gamemode=" + id);
+    }
+    return players;
+  }
+
+  /** How many of a node's fields are a prefix and a number: {@code avatar0}, {@code avatar1}... */
+  private static int numbered(JsonNode node, String prefix) {
+    int count = 0;
+    for (Iterator<String> it = node.fieldNames(); it.hasNext(); ) {
+      String name = it.next();
+      if (name.length() > prefix.length()
+          && name.startsWith(prefix)
+          && name.substring(prefix.length()).chars().allMatch(Character::isDigit)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /** Whether two of the sides' avatars have one account id. */
+  private static boolean sharesAnAccount(List<int[]> accounts) {
+    for (int a = 0; a < accounts.size(); a++) {
+      for (int b = a + 1; b < accounts.size(); b++) {
+        if (accounts.get(a)[0] == accounts.get(b)[0] && accounts.get(a)[1] == accounts.get(b)[1]) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
    * The players' data, one entry each: only the entry with no emotes listed is known, whose data
    * the game builds with one choice.
    *
@@ -831,7 +1053,12 @@ public final class ReplayScenario {
       return playerDataWithKingLevels(battle);
     }
     List<Integer> choices = new ArrayList<>();
-    for (JsonNode entry : required(battle, "hbd")) {
+    JsonNode entries = required(battle, "hbd");
+    if (entries.size() != players) {
+      throw new UnsupportedScenarioException(
+          "players' data of " + entries.size() + " entries, not one per side", "battle.hbd");
+    }
+    for (JsonNode entry : entries) {
       if (!entry.toString().equals(NO_EMOTES)) {
         refuse(
             "a player's data other than one with no emotes listed, whose number of choices is not"
@@ -862,13 +1089,13 @@ public final class ReplayScenario {
     kingLevels.clear();
     excludedEvolutions.clear();
     JsonNode entries = required(battle, "hbd");
-    if (entries.size() != 2) {
+    if (entries.size() != players) {
       throw new UnsupportedScenarioException(
           "players' data of " + entries.size() + " entries, not one per side", "battle.hbd");
     }
     List<Integer> choices = new ArrayList<>();
     int levelCount = tables.table("rarities").row("Common").intValue("LevelCount");
-    for (int side = 0; side < 2; side++) {
+    for (int side = 0; side < players; side++) {
       JsonNode entry = entries.get(side);
       String field = "battle.hbd[" + side + "]";
       onlyFields(
@@ -1008,6 +1235,7 @@ public final class ReplayScenario {
    */
   private Map<String, String> gameMode(JsonNode battle) {
     friendlyLevel = 0;
+    teamMode = null;
     GameRow mode = row(required(battle, "gamemode").asInt(), "battle.gamemode");
     mapping.put(
         "battle.gamemode",
@@ -1017,9 +1245,45 @@ public final class ReplayScenario {
             + String.join(", ", PLAYED_AS_LADDER.keySet())
             + ", each pinning gmt, lvlcap and trail to its own values, or under an event "
             + String.join(", ", PLAYED_UNDER_AN_EVENT.keySet())
-            + ", each pinning tps to its own value");
+            + ", each pinning tps to its own value; a team mode "
+            + String.join(", ", TEAM_MODES.keySet())
+            + ", read for its four players and played as the team match");
     if (mode.name().equals(LadderMatch.GAME_MODE)) {
       return LADDER_HEADER;
+    }
+    Map<String, String> teamHeader = TEAM_MODES.get(mode.name());
+    if (teamHeader != null) {
+      // A team mode is its own row: only who plays is checked here, its other values are the team
+      // match's to read.
+      if (!TEAM_PLAYERS.equals(mode.string(PLAYERS))) {
+        refuse(
+            "the team mode "
+                + mode.name()
+                + ", whose "
+                + PLAYERS
+                + " is "
+                + mode.string(PLAYERS)
+                + ", not "
+                + TEAM_PLAYERS,
+            "battle.gamemode=" + battle.get("gamemode"));
+      }
+      teamMode = mode;
+      if (!mode.name().equals(LADDER_TEAM_VS_TEAM)) {
+        sameAs(LADDER_TEAM_VS_TEAM, mode, FRIENDLY_TEAM_OUTSIDE, battle);
+        String adjustment = mode.string(CARD_LEVEL_ADJUSTMENT);
+        if (!FRIENDLY.equals(adjustment)) {
+          refuse(
+              "the team mode "
+                  + mode.name()
+                  + " under the card level adjustment "
+                  + adjustment
+                  + ", whose levels in a team battle are not established",
+              "battle.gamemode=" + battle.get("gamemode"));
+        } else {
+          friendlyLevel = friendlyLevel();
+        }
+      }
+      return teamHeader;
     }
     Map<String, String> header = PLAYED_AS_LADDER.get(mode.name());
     if (header != null) {
@@ -1060,7 +1324,17 @@ public final class ReplayScenario {
    * outside}, naming each such column.
    */
   private void sameAsLadder(GameRow mode, Set<String> outside, JsonNode battle) {
-    GameRow ladder = tables.table(GAME_MODES).row(LadderMatch.GAME_MODE);
+    sameAs(LadderMatch.GAME_MODE, mode, outside, battle);
+  }
+
+  /**
+   * Refuses a game mode whose row differs from another row in a column not among {@code outside},
+   * naming each such column.
+   *
+   * @param base the name of the row it is held to
+   */
+  private void sameAs(String base, GameRow mode, Set<String> outside, JsonNode battle) {
+    GameRow ladder = tables.table(GAME_MODES).row(base);
     Set<String> columns = new TreeSet<>(ladder.columns().keySet());
     columns.addAll(mode.columns().keySet());
     columns.removeAll(outside);
@@ -1072,7 +1346,7 @@ public final class ReplayScenario {
                 + ", whose "
                 + column
                 + " differs from the "
-                + LadderMatch.GAME_MODE
+                + base
                 + " row's",
             "battle.gamemode=" + battle.get("gamemode"));
       }
@@ -1200,10 +1474,30 @@ public final class ReplayScenario {
     return minimum.asInt();
   }
 
-  /** The location: only one on the standard map is built. */
+  /**
+   * The location: a battle of one player a side is built only on the standard map; a team battle on
+   * its location's map, one of {@link #TEAM_TILE_MAPS}, the maps a recorded team battle holds.
+   */
   private void location(JsonNode battle) {
     GameRow location = row(required(battle, "location").asInt(), "battle.location");
-    String tileMap = location.string("TileDataFileName");
+    tileMap = location.string("TileDataFileName");
+    if (teamMode != null) {
+      if (!TEAM_TILE_MAPS.contains(tileMap)) {
+        refuse(
+            "the map "
+                + tileMap
+                + " of the team battle location "
+                + location.name()
+                + ", which no recorded team battle holds",
+            "battle.location=" + battle.get("location"));
+      }
+      mapping.put(
+          "battle.location",
+          "consumed: the location row of a team battle, whose map must be one of "
+              + String.join(" and ", TEAM_TILE_MAPS.stream().sorted().toList())
+              + ", read from the tables");
+      return;
+    }
     if (!STANDARD_TILE_MAP.equals(tileMap)) {
       refuse(
           "the map " + tileMap + " of location " + location.name(),
@@ -1291,6 +1585,17 @@ public final class ReplayScenario {
         !kingLevels.isEmpty()
             ? kingLevels.get(side)
             : shape == ScenarioShape.GENERATED ? GENERATED_KING_LEVEL : KING_LEVEL;
+    if (teamMode != null && friendlyLevel > 0) {
+      // Under the Friendly adjustment the game puts each player's king and tower troop at one level
+      // of its own, whatever the replay's, and asks no partner's.
+      mapping.put("battle.hbd[i]." + ReplayFormat.KING_LEVEL_FIELD, TOWER_LEVEL_UNDER_FRIENDLY);
+      Standard1v1Battle.Towers placed = teamTowers(card, friendlyLevel, friendlyLevel, field);
+      mapping.put("battle.deckN.sc[0].l", TOWER_LEVEL_UNDER_FRIENDLY);
+      return placed;
+    }
+    if (teamMode != null) {
+      return teamTowers(card, kingLevel, levelIndex + rarity.intValue("RelativeLevel") + 1, field);
+    }
     if (friendlyLevel > 0) {
       // Under the Friendly adjustment the game puts the king and the towers at one level of its
       // own, whatever the replay's.
@@ -1300,6 +1605,32 @@ public final class ReplayScenario {
     }
     return new Standard1v1Battle.Towers(
         card.string("SpawnGroup"), kingLevel, levelIndex + rarity.intValue("RelativeLevel") + 1);
+  }
+
+  /**
+   * A team battle player's towers: the tower selection's team battle spawn group ({@value
+   * #TEAM_SPAWN_GROUP}), one king and one tower troop, at the side's king level and the selection's
+   * level. Any selection the simulator builds ({@link #BUILT_TOWER_SELECTIONS}) is placed so: the
+   * game reads the team battle spawn group of whichever selection the player brings, and creates
+   * its rows as a battle of two creates its own group's. A selection that names no such group is
+   * refused.
+   */
+  private Standard1v1Battle.Towers teamTowers(
+      GameRow card, int kingLevel, int level, String field) {
+    String group = card.string(TEAM_SPAWN_GROUP);
+    if (group == null || group.isEmpty()) {
+      refuse(
+          "the tower selection " + card.name() + ", which names no " + TEAM_SPAWN_GROUP,
+          field + "[0].d");
+    }
+    mapping.put(
+        "battle.deckN.sc[0].d",
+        "consumed: the tower selection, a support card; in a team battle one of "
+            + String.join(" and ", BUILT_TOWER_SELECTIONS.stream().sorted().toList())
+            + ", whose "
+            + TEAM_SPAWN_GROUP
+            + " places the player's king and tower troop; the others unsupported");
+    return new Standard1v1Battle.Towers(group, kingLevel, level);
   }
 
   /**
@@ -1387,9 +1718,15 @@ public final class ReplayScenario {
               + card.name()
               + " at level "
               + level
-              + ", which the card level minimum raises to "
-              + raised
-              + ": a Mirror's or a variant card's item level under the raise is in no reference",
+              + (friendlyTeam
+                  ? ", which the Friendly card level adjustment puts at "
+                      + raised
+                      + ": a Mirror's or a variant card's item level under the adjustment is in no"
+                      + " reference"
+                  : ", which the card level minimum raises to "
+                      + raised
+                      + ": a Mirror's or a variant card's item level under the raise is in no"
+                      + " reference"),
           field + ".c.sel.pd=" + packed);
     }
     if (card.bool(MIRROR_COLUMN)) {
@@ -1447,7 +1784,11 @@ public final class ReplayScenario {
               + slots
               + " and level "
               + level
-              + (raised != level ? " (raised to " + raised + " by the card level minimum)" : ""));
+              + (raised == level
+                  ? ""
+                  : friendlyTeam
+                      ? " (put at " + raised + " by the Friendly card level adjustment)"
+                      : " (raised to " + raised + " by the card level minimum)"));
     }
     return new ScenarioPlan.Play(
         index,
@@ -1677,12 +2018,15 @@ public final class ReplayScenario {
     return given;
   }
 
-  /** The side a command's account id names: the side whose avatar has it. */
+  /**
+   * The side a command's account id names: the side whose avatar has it, 0 and 1 in a battle of one
+   * player a side, 0 to 3 in a team battle.
+   */
   private static int side(JsonNode body, String field, List<int[]> accounts) {
     int hi = required(body, "idHi").asInt();
     int lo = required(body, "idLo").asInt();
     int side = -1;
-    for (int s = 0; s < 2; s++) {
+    for (int s = 0; s < accounts.size(); s++) {
       if (accounts.get(s)[0] == hi && accounts.get(s)[1] == lo) {
         side = s;
       }

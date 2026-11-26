@@ -7,7 +7,9 @@
 package org.crforge.core.pathfinding.grid;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Arrays;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -115,5 +117,39 @@ class GridSearchServiceTest {
 
     assertThat(result.route().isEmpty()).isTrue();
     assertThat(result.counters()).containsExactly(0, 0, 0, 0);
+  }
+
+  /**
+   * An open 9 by 9 map of road 1 whose middle cell also sets a bit above the seven the routing
+   * models.
+   */
+  private static TileMap openMapWithAnUnmodelledMiddle() {
+    int[] values = new int[9 * 9];
+    Arrays.fill(values, 1);
+    values[4 * 9 + 4] = 1 | (1 << 8);
+    return new TileMap(9, 9, values);
+  }
+
+  private static Route straightRoute(TileMap map) {
+    CellGrid open = new CellGrid(map, true, PathfindingGlobals.PATHFINDING_BUILDING_COST);
+    return GridSearchService.route(
+        open, CellCosts.standard(), GridEntityState.MOVING, 1, false, false, 4, 0, 4, 8, 1);
+  }
+
+  @Test
+  void aMapThatRefusesUnmodelledCellsRefusesARouteOverOne() {
+    TileMap map = openMapWithAnUnmodelledMiddle();
+    // The map as a battle of two reads it: the bit is masked away and the route goes straight.
+    Route route = straightRoute(map);
+    boolean overTheMiddle = false;
+    for (int i = 0; i < route.size(); i++) {
+      overTheMiddle |= route.get(i) == 4 * 9 + 4;
+    }
+    assertThat(overTheMiddle).isTrue();
+
+    assertThatThrownBy(() -> straightRoute(map.refusingUnmodelledCells()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("(4, 4)")
+        .hasMessageContaining("a route");
   }
 }

@@ -123,19 +123,28 @@ public final class GridSearchService {
     // The grid's own working arrays: a search clears them first, and nothing it answers refers to
     // them, so every search of the battle reuses them.
     RouteSearch.Buffers buffers = grid.getSearchBuffers();
-    return RouteSearch.search(
-        grid.getWidth(),
-        grid.getHeight(),
-        lookup,
-        nodes.startNode(),
-        nodes.goalNode(),
-        PathfindingGlobals.PATHFINDING_HEURISTIC_METHOD,
-        PathfindingGlobals.PATHFINDING_DEFAULTHEURISTIC_COST,
-        !PathfindingGlobals.NEW_PATHFINDING_CODE,
-        PathfindingGlobals.PATHFINDING_REFRESH_OPENNODES,
-        PathfindingGlobals.PATHFINDING_REOPEN_CLOSEDNODES,
-        UNLIMITED_BUDGET,
-        buffers);
+    RouteSearchResult result =
+        RouteSearch.search(
+            grid.getWidth(),
+            grid.getHeight(),
+            lookup,
+            nodes.startNode(),
+            nodes.goalNode(),
+            PathfindingGlobals.PATHFINDING_HEURISTIC_METHOD,
+            PathfindingGlobals.PATHFINDING_DEFAULTHEURISTIC_COST,
+            !PathfindingGlobals.NEW_PATHFINDING_CODE,
+            PathfindingGlobals.PATHFINDING_REFRESH_OPENNODES,
+            PathfindingGlobals.PATHFINDING_REOPEN_CLOSEDNODES,
+            UNLIMITED_BUDGET,
+            buffers);
+    // A team battle's map refuses a route over a cell whose bits above the modelled ones it reads.
+    TileMap map = grid.getTileMap();
+    Route route = result.route();
+    for (int i = 0; i < route.size(); i++) {
+      int cell = route.get(i);
+      map.checkModelled(cell % grid.getWidth(), cell / grid.getWidth(), "a route");
+    }
+    return result;
   }
 
   /** The budget route preparation passes: none, so the search expands as many nodes as it needs. */

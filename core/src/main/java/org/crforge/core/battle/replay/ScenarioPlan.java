@@ -9,7 +9,9 @@ package org.crforge.core.battle.replay;
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 
 /**
@@ -22,9 +24,13 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * #towers} keep the levels as the replay gives them, so a written replay reads back the same.
  *
  * @param seed the battle stream's seed
+ *     <p>A side is a player's index: 0 and 1 in a battle of one player a side, 0 to 3 in a team
+ *     battle ({@link #players}), each list below holding one entry per player. A team battle's plan
+ *     is played as the team match ({@link ReplayBattle#build}).
  * @param towers each side's towers as the replay gives them: the spawn group of its tower
  *     selection, with the level of its king row and of its other rows, counted from 1; the battle
- *     stands them at {@link #raisedTowers}
+ *     stands them at {@link #raisedTowers}. A team battle's plan names each selection's team battle
+ *     spawn group, which places one king and one princess tower a player
  * @param decks each side's deck, by card row name, in the scenario's order
  * @param deckLevels each side's card levels by deck index as the replay gives them, counted from 1
  *     across all rarities; the battle's deck holds them at {@link #raisedDeckLevels}
@@ -44,6 +50,12 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  *     ReplayFormat#EXCLUDED_EVOLUTIONS_FIELD}), by row name in the order its player's data lists
  *     them, empty where it lists none; an evolved Mirror repeats a card whose evolved row its side
  *     lists as the card itself
+ * @param tileMap the map the battle is played on: its location's tile data, by the path the
+ *     location names it ({@code TileDataFileName}), the standard arena's for a battle of one player
+ *     a side
+ * @param gameMode the game mode row the match is played under: {@value LadderMatch#GAME_MODE} for a
+ *     battle of one player a side, whichever row its replay names that is played as it; a team
+ *     battle's own row, one of {@link LadderMatch#TEAM_GAME_MODES}
  */
 public record ScenarioPlan(
     int seed,
@@ -57,17 +69,128 @@ public record ScenarioPlan(
     List<Play> plays,
     List<Ability> abilities,
     int cardLevelMinimum,
-    List<List<String>> excludedEvolutions) {
+    List<List<String>> excludedEvolutions,
+    String tileMap,
+    String gameMode) {
 
   /** Two sides that list no excluded evolution, as a replay that does not read them gives. */
   public static final List<List<String>> NONE_EXCLUDED = List.of(List.of(), List.of());
 
-  /** Each side's list of excluded evolutions, one per side, kept as given. */
+  /** The players of a battle of one player a side, sides 0 and 1. */
+  public static final int ONE_A_SIDE = 2;
+
+  /**
+   * The players of a team battle, two a team: sides 0 and 2 are one team, sides 1 and 3 the other.
+   */
+  public static final int TEAM_BATTLE = 4;
+
+  /**
+   * Each side's list of excluded evolutions, one per side, kept as given; a plan holds one deck per
+   * player, {@value #ONE_A_SIDE} or {@value #TEAM_BATTLE}.
+   */
   public ScenarioPlan {
+    checkArgument(tileMap != null && !tileMap.isEmpty(), "a plan names the map it is played on");
+    checkArgument(
+        gameMode != null && !gameMode.isEmpty(), "a plan names the game mode it is played under");
+    int players = decks.size();
+    checkArgument(
+        players == ONE_A_SIDE || players == TEAM_BATTLE,
+        () -> "a plan of " + players + " players, not " + ONE_A_SIDE + " or " + TEAM_BATTLE);
     int sides = excludedEvolutions.size();
-    checkArgument(sides == 2, () -> "excluded evolutions of " + sides + " sides, not two");
-    excludedEvolutions =
-        List.of(List.copyOf(excludedEvolutions.get(0)), List.copyOf(excludedEvolutions.get(1)));
+    checkArgument(
+        sides == players,
+        () -> "excluded evolutions of " + sides + " sides, not one per player of " + players);
+    excludedEvolutions = excludedEvolutions.stream().map(List::copyOf).toList();
+  }
+
+  /**
+   * A plan played on the standard arena's map under the Ladder row, as a battle of one player a
+   * side is.
+   *
+   * @see ScenarioPlan the components
+   */
+  public ScenarioPlan(
+      int seed,
+      List<Standard1v1Battle.Towers> towers,
+      List<List<String>> decks,
+      List<int[]> deckLevels,
+      List<int[]> slotFlags,
+      List<int[]> accounts,
+      List<String> arenas,
+      List<Integer> playerDataChoices,
+      List<Play> plays,
+      List<Ability> abilities,
+      int cardLevelMinimum,
+      List<List<String>> excludedEvolutions) {
+    this(
+        seed,
+        towers,
+        decks,
+        deckLevels,
+        slotFlags,
+        accounts,
+        arenas,
+        playerDataChoices,
+        plays,
+        abilities,
+        cardLevelMinimum,
+        excludedEvolutions,
+        ReplayScenario.STANDARD_TILE_MAP,
+        LadderMatch.GAME_MODE);
+  }
+
+  /**
+   * Each player's list of excluded evolutions when no player's data lists any.
+   *
+   * @param players the battle's players
+   * @return one empty list per player
+   */
+  public static List<List<String>> noneExcluded(int players) {
+    return players == ONE_A_SIDE ? NONE_EXCLUDED : Collections.nCopies(players, List.of());
+  }
+
+  /**
+   * The battle's players, one per deck: {@value #ONE_A_SIDE} in a battle of one player a side,
+   * {@value #TEAM_BATTLE} in a team battle. A side is a player's index, its avatar's in the
+   * scenario, 0 to the players less 1.
+   */
+  public int players() {
+    return decks.size();
+  }
+
+  /** Whether the plan is a team battle's, of {@value #TEAM_BATTLE} players. */
+  public boolean teamBattle() {
+    return players() == TEAM_BATTLE;
+  }
+
+  /**
+   * The team of a side: its parity, so sides 0 and 2 are team 0 and sides 1 and 3 team 1; in a
+   * battle of one player a side the team is the side.
+   *
+   * @param side a player's index
+   * @return its team, 0 or 1
+   */
+  public int team(int side) {
+    checkSide(side);
+    return side % 2;
+  }
+
+  /**
+   * The partner of a side, the other player of its team: in a team battle side 0 and side 2 are
+   * partners, and side 1 and side 3; a battle of one player a side has none.
+   *
+   * @param side a player's index
+   * @return the partner's index, or -1 for none
+   */
+  public int partner(int side) {
+    checkSide(side);
+    return teamBattle() ? (side + 2) % TEAM_BATTLE : -1;
+  }
+
+  /** Refuses an index that names none of the plan's players. */
+  private void checkSide(int side) {
+    checkArgument(
+        side >= 0 && side < players(), () -> "side " + side + " of " + players() + " players");
   }
 
   /**
@@ -104,15 +227,20 @@ public record ScenarioPlan(
   /**
    * Each side's towers as the battle stands them: the princess rows (the tower selection's level)
    * raised by the card level minimum ({@link #raised}), the king row at its own level, which the
-   * minimum does not raise under the Ladder row.
+   * minimum does not raise under the Ladder row. In a team battle, under the team Ladder row's
+   * Ladder level adjustment, each king stands at the higher of its own level and its partner's.
    *
    * @return the towers the battle is built with
    */
   public List<Standard1v1Battle.Towers> raisedTowers() {
     List<Standard1v1Battle.Towers> raised = new ArrayList<>();
-    for (Standard1v1Battle.Towers side : towers) {
-      raised.add(
-          new Standard1v1Battle.Towers(side.spawnGroup(), side.kingLevel(), raised(side.level())));
+    for (int side = 0; side < towers.size(); side++) {
+      Standard1v1Battle.Towers own = towers.get(side);
+      int kingLevel = own.kingLevel();
+      if (teamBattle()) {
+        kingLevel = Math.max(kingLevel, towers.get(partner(side)).kingLevel());
+      }
+      raised.add(new Standard1v1Battle.Towers(own.spawnGroup(), kingLevel, raised(own.level())));
     }
     return raised;
   }

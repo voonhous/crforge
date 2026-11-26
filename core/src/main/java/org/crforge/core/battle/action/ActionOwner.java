@@ -636,6 +636,12 @@ public interface ActionOwner {
   }
 
   /**
+   * Refuses a heal on the owner the battle core does not model; nothing for an owner any heal may
+   * reach.
+   */
+  default void refuseHeal() {}
+
+  /**
    * Whether a Clone's perform may clone the owner, as it tests it: no unit a Clone passes by, a
    * living one, riding nothing. A refusal is told to the battle's observers; a clone the battle
    * does not model, the clone of a clone among them, is refused outright.

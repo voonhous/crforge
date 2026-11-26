@@ -140,7 +140,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " launch from its source or spread about its point, the life condition, following a"
             + " target on an area effect no projectile's impact made, tags other than the one"
             + " that only hides the pushback's presentation, a lifetime that grows by level, the"
-            + " push's floor and gate lift and one hit per target without a hit action. Created"
+            + " push's floor and gate lift and one hit per target without a hit action. In a team"
+            + " battle the filter form lists the partner's king of a king it reaches, whatever"
+            + " the row, and passes it by from then on, held by the team battle reference battles"
+            + " tvt_poison_kings and tvt_earthquake_kings; its buff goes to"
+            + " that partner's king unless it deals damage over time, held by tvt_freeze_half0,"
+            + " tvt_rage_half2 and tvt_poison_kings, and to the team's middle piece, which shows"
+            + " nothing of it; a hit action or a row without a filter on a king of a team battle"
+            + " is refused. Created"
             + " by a unit's ability at the unit, the unit its parent and the object it follows,"
             + " and the deflection radius it measures projectiles against, held by ability_monk"
             + " and random_battle16_s0048, and for a filter form row by ability_monk and"
@@ -276,7 +283,9 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   /**
    * The ids of the objects its hit action has reached, for a row that reaches each once; in the
-   * filter form, the ids of the objects its hits have reached, listed as each is first reached.
+   * filter form, the ids of the objects its hits have reached, listed as each is first reached. In
+   * a team battle the filter form lists the partner's king of any king it reaches too, whatever the
+   * row.
    */
   private final List<Integer> reached = new ArrayList<>();
 
@@ -739,17 +748,17 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       // One hit per target: an object already reached is passed by, anything else listed as
       // reached. A row that pushes continuously pushes a reached object again, and pulls it, when
       // its movement is on, and gives it nothing else; neither counts against the row's maximum.
+      // Only a row that hits each object once lists what it reaches, but in a team battle any row
+      // lists a king's partner's king (see below), which it passes by from then on.
       boolean again = false;
-      if (data.oneHitPerTarget()) {
-        if (reached.contains(target.getId())) {
-          if (!data.continuousPushback()
-              || !(target instanceof CharacterEntity character && character.movementOn())) {
-            continue;
-          }
-          again = true;
-        } else {
-          reached.add(target.getId());
+      if (reached.contains(target.getId())) {
+        if (!data.continuousPushback()
+            || !(target instanceof CharacterEntity character && character.movementOn())) {
+          continue;
         }
+        again = true;
+      } else if (data.oneHitPerTarget()) {
+        reached.add(target.getId());
       }
       // A character whose movement component is on is the one the push and the pull reach; the
       // vector to the centre is taken before the push asks for anything.
@@ -772,8 +781,15 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       if (data.typedDamage() != null) {
         world.getHits().queueAreaDamage(this, target, data.typedDamage());
       }
+      // A king of a team battle has its partner's king, the other half of its team's king, listed
+      // as reached, whatever the row: the area effect never reaches that half from now on.
+      TowerEntity partner = world.partnerKing(target);
+      if (partner != null && !reached.contains(partner.getId())) {
+        reached.add(partner.getId());
+      }
       // The hit action, built for the object and scheduled on it, the area effect the cause.
       if (data.onHitAction() != null) {
+        refuseTeamKing(target);
         BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
         world.getEvents().onHitActionScheduled(this, target, action);
         target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
@@ -908,6 +924,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     }
     for (int i = 0; i < hits; i++) {
       for (WorldEntity target : listed) {
+        refuseTeamKing(target);
         BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
         target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
       }
@@ -951,6 +968,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         // The hit action first, on every hit: built for the target and scheduled there, the area
         // effect as the cause.
         if (data.onHitAction() != null) {
+          refuseTeamKing(target);
           BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
           target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
         }
@@ -1141,6 +1159,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         if (!onHitFilter(target)) {
           continue;
         }
+        refuseTeamKing(target);
         BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
         world.getEvents().onHitActionScheduled(this, target, action);
         target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
@@ -1466,6 +1485,24 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     return t > small ? Math.min(t, big) : small;
   }
 
+  /**
+   * Refuses an area effect's hit on a king in a team battle by a part of the update no recorded
+   * team battle holds: a hit action, and the hits of a row without a filter. The game lists the
+   * partner's king as reached after any hit on a king and carries a buff to the partner's king and
+   * the team's middle piece; only the filter form's damage and buff are held.
+   */
+  private void refuseTeamKing(WorldEntity target) {
+    if (world.teamBattle() && target.getData().king()) {
+      throw new UnsupportedOperationException(
+          "the hit of the area effect "
+              + data.name()
+              + " on "
+              + target.name()
+              + ", a king of a team battle, by its hit action or without a filter, is not"
+              + " modelled");
+    }
+  }
+
   /** One hit: the area damage around it, with itself as the owner. */
   private void hit(int radius, int damage) {
     asking = "area_damage";
@@ -1504,6 +1541,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
               @Override
               public DamageResult damage(TargetView victim, int amount, int hitId) {
+                refuseTeamKing(world.entityOf(victim.getEntity()));
                 return world
                     .getHits()
                     .dealAreaEffectDamage(
@@ -1550,6 +1588,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   @Override
   public int castId() {
     return castId;
+  }
+
+  @Override
+  public boolean inTeamBattle() {
+    return world.teamBattle();
   }
 
   @Override

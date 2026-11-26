@@ -119,11 +119,39 @@ class FootprintOverlayTest {
   }
 
   @Test
+  void aTeamBattlesOccludersFoldIntoTheirTeamsHash() {
+    // Sides 0 and 2 are team 0, sides 1 and 3 team 1: a side 2 or side 3 building folds its id into
+    // its team's hash, after the side 0 or side 1 one listed before it.
+    GridEntity sideZero = entity(4, 0, 2500, 2500, 500, true);
+    GridEntity sideTwo = entity(5, 2, 6500, 2500, 500, true);
+    GridEntity sideThree = entity(6, 3, 6500, 29500, 500, true);
+
+    FootprintOverlay.buildOverlay(grid, List.of(sideZero, sideTwo, sideThree));
+
+    assertThat(grid.getHash()).containsExactly(Integer.rotateRight(4 + 9, 31) + 5 + 9, 6 + 9);
+    assertThat(grid.getChanged()).containsExactly(1, 1);
+  }
+
+  @Test
+  void losingATeamBattlesSideThreeOccluderRaisesTeamOnesChangeFlag() {
+    GridEntity sideOne = entity(4, 1, 2500, 29500, 500, true);
+    GridEntity sideThree = entity(5, 3, 6500, 29500, 500, true);
+    FootprintOverlay.buildOverlay(grid, List.of(sideOne, sideThree));
+    grid.swap();
+
+    FootprintOverlay.buildOverlay(grid, List.of(sideOne));
+
+    assertThat(grid.getHash()).containsExactly(0, 4 + 9);
+    assertThat(grid.getChanged()).containsExactly(0, 1);
+  }
+
+  @Test
   void skipsEntitiesOfAnotherVirtualTypeOrThatDoNotOcclude() {
     GridEntity wrongType = entity(1, 0, 2500, 2500, 500, true);
     wrongType.setType(4);
     GridEntity transparent = entity(2, 0, 2500, 2500, 500, false);
-    GridEntity otherSide = entity(3, 7, 2500, 2500, 500, true);
+    // The neutral side is a team of its own, team 2, which carries no hash.
+    GridEntity otherSide = entity(3, 100, 2500, 2500, 500, true);
 
     List<Integer> stamped =
         FootprintOverlay.buildOverlay(grid, List.of(wrongType, transparent, otherSide));

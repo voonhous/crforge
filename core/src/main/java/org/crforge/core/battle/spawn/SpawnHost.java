@@ -37,6 +37,14 @@ public interface SpawnHost extends SpawnObject {
     return UNMODELLED_CAST_ID;
   }
 
+  /**
+   * Whether the object is in a team battle, two players a side, where the game mirrors a spawn's
+   * location by team rather than by side.
+   */
+  default boolean inTeamBattle() {
+    return false;
+  }
+
   /** The object's name, which the children it spawns are named after. */
   String name();
 

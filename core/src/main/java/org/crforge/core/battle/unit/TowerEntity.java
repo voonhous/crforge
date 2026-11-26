@@ -595,6 +595,10 @@ public class TowerEntity extends WorldEntity {
        * The side's princess-slot towers, read afresh every step. A destroyed tower leaves the list
        * in the cleanup that takes it out of the battle, so it adds nothing from the next step on;
        * until that cleanup it is listed and read like any other, its state and buffs as they were.
+       *
+       * <p>In a team battle the game reads its team's list and skips every tower of another side,
+       * the partner's too, in the cooking and in the throw's choice of tower: the side's own
+       * towers, as here.
        */
       @Override
       public List<Integer> towers() {
@@ -603,6 +607,11 @@ public class TowerEntity extends WorldEntity {
           ids.add(tower.getId());
         }
         return ids;
+      }
+
+      @Override
+      public boolean teamBattle() {
+        return world.teamBattle();
       }
 
       @Override

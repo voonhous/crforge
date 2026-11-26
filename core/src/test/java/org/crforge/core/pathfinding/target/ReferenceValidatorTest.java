@@ -125,6 +125,50 @@ class ReferenceValidatorTest {
   }
 
   @Test
+  @DisplayName(
+      "in a team battle a dead king is refused to a character once its partner's king exists, even"
+          + " with the alive check bypassed")
+  void teamBattleRefusesADeadKingWithAPartner() {
+    knight.setAliveCheckBypass(true);
+    enemyTower.getEntity().setAlive(false);
+    boolean[] partner = {true};
+    ValidatorQueries team =
+        new ValidatorQueries() {
+          @Override
+          public boolean teamBattle() {
+            return true;
+          }
+
+          @Override
+          public boolean partnerKingPresent(TargetView target) {
+            return partner[0];
+          }
+        };
+
+    assertThat(ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, team))
+        .as("dead, its partner's king present: refused")
+        .isFalse();
+    assertThat(
+            ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, queries))
+        .as("a battle of two keeps the dead king through the bypass")
+        .isTrue();
+    partner[0] = false;
+    assertThat(ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, team))
+        .as("no partner's king: kept")
+        .isTrue();
+    partner[0] = true;
+    enemyTower.getEntity().setAlive(true);
+    assertThat(ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, team))
+        .as("alive by its own hit points: kept")
+        .isTrue();
+    enemyTower.getEntity().setAlive(false);
+    enemyTower.getEntity().setKingCandidate(0);
+    assertThat(ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, team))
+        .as("not a king: the rule does not ask")
+        .isTrue();
+  }
+
+  @Test
   @DisplayName("the untargetable flag hides an entity from everything")
   void untargetableIsRefused() {
     enemyTower.getEntity().setFlags(BITS.untargetable());
