@@ -9,7 +9,6 @@ package org.crforge.core.battle.replay;
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 
@@ -23,15 +22,9 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * #towers} keep the levels as the replay gives them, so a written replay reads back the same.
  *
  * @param seed the battle stream's seed
- *     <p>A side is a player's index: 0 and 1 in a battle of one player a side, 0 to 3 in a team
- *     battle ({@link #players}), each list below holding one entry per player. A team battle's plan
- *     is read but not played: no battle mode models a team match ({@link ReplayBattle#build}
- *     refuses it).
  * @param towers each side's towers as the replay gives them: the spawn group of its tower
  *     selection, with the level of its king row and of its other rows, counted from 1; the battle
- *     stands them at {@link #raisedTowers}. A team battle's plan, which no battle plays, names each
- *     selection's spawn group as a battle of one player a side places it; which towers a team
- *     battle places is the team match's to read
+ *     stands them at {@link #raisedTowers}
  * @param decks each side's deck, by card row name, in the scenario's order
  * @param deckLevels each side's card levels by deck index as the replay gives them, counted from 1
  *     across all rarities; the battle's deck holds them at {@link #raisedDeckLevels}
@@ -69,82 +62,12 @@ public record ScenarioPlan(
   /** Two sides that list no excluded evolution, as a replay that does not read them gives. */
   public static final List<List<String>> NONE_EXCLUDED = List.of(List.of(), List.of());
 
-  /** The players of a battle of one player a side, sides 0 and 1. */
-  public static final int ONE_A_SIDE = 2;
-
-  /**
-   * The players of a team battle, two a team: sides 0 and 2 are one team, sides 1 and 3 the other.
-   */
-  public static final int TEAM_BATTLE = 4;
-
-  /**
-   * Each side's list of excluded evolutions, one per side, kept as given; a plan holds one deck per
-   * player, {@value #ONE_A_SIDE} or {@value #TEAM_BATTLE}.
-   */
+  /** Each side's list of excluded evolutions, one per side, kept as given. */
   public ScenarioPlan {
-    int players = decks.size();
-    checkArgument(
-        players == ONE_A_SIDE || players == TEAM_BATTLE,
-        () -> "a plan of " + players + " players, not " + ONE_A_SIDE + " or " + TEAM_BATTLE);
     int sides = excludedEvolutions.size();
-    checkArgument(
-        sides == players,
-        () -> "excluded evolutions of " + sides + " sides, not one per player of " + players);
-    excludedEvolutions = excludedEvolutions.stream().map(List::copyOf).toList();
-  }
-
-  /**
-   * Each player's list of excluded evolutions when no player's data lists any.
-   *
-   * @param players the battle's players
-   * @return one empty list per player
-   */
-  public static List<List<String>> noneExcluded(int players) {
-    return players == ONE_A_SIDE ? NONE_EXCLUDED : Collections.nCopies(players, List.of());
-  }
-
-  /**
-   * The battle's players, one per deck: {@value #ONE_A_SIDE} in a battle of one player a side,
-   * {@value #TEAM_BATTLE} in a team battle. A side is a player's index, its avatar's in the
-   * scenario, 0 to the players less 1.
-   */
-  public int players() {
-    return decks.size();
-  }
-
-  /** Whether the plan is a team battle's, of {@value #TEAM_BATTLE} players. */
-  public boolean teamBattle() {
-    return players() == TEAM_BATTLE;
-  }
-
-  /**
-   * The team of a side: its parity, so sides 0 and 2 are team 0 and sides 1 and 3 team 1; in a
-   * battle of one player a side the team is the side.
-   *
-   * @param side a player's index
-   * @return its team, 0 or 1
-   */
-  public int team(int side) {
-    checkSide(side);
-    return side % 2;
-  }
-
-  /**
-   * The partner of a side, the other player of its team: in a team battle side 0 and side 2 are
-   * partners, and side 1 and side 3; a battle of one player a side has none.
-   *
-   * @param side a player's index
-   * @return the partner's index, or -1 for none
-   */
-  public int partner(int side) {
-    checkSide(side);
-    return teamBattle() ? (side + 2) % TEAM_BATTLE : -1;
-  }
-
-  /** Refuses an index that names none of the plan's players. */
-  private void checkSide(int side) {
-    checkArgument(
-        side >= 0 && side < players(), () -> "side " + side + " of " + players() + " players");
+    checkArgument(sides == 2, () -> "excluded evolutions of " + sides + " sides, not two");
+    excludedEvolutions =
+        List.of(List.copyOf(excludedEvolutions.get(0)), List.copyOf(excludedEvolutions.get(1)));
   }
 
   /**

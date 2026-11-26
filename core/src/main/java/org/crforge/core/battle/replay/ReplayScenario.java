@@ -80,13 +80,6 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * version's command types; a version whose generated cases' fields are not established has the
  * whole case refused.
  *
- * <p>A team battle, four players two a team under a game mode row of {@link #TEAM_MODES}, is read
- * as a battle of one player a side is, for each of its four avatars, decks and players' data, each
- * command naming its player by its avatar's account id; then {@link #translate} refuses it, as no
- * battle mode models a team match ({@link #NO_TEAM_MATCH}). The avatars and decks a battle holds
- * must be as many as its game mode row's {@value #PLAYERS} column gives players ({@link
- * #PLAYERS_BY_KIND}).
- *
  * <p>{@link #translate} stops at the first input it cannot map. {@link #survey} reads the same
  * scenario the same way and lists every refusal it meets instead: each field and pinned value it
  * refuses, and each command it cannot read, going on to the next. A refusal that leaves nothing to
@@ -273,50 +266,6 @@ public final class ReplayScenario {
           new EventMode(
               "2", Set.of(DECK_SELECTION, "Icon", "TID", "ShowTrophies", "ValidChallengeMode")));
 
-  /** The game mode column that names who plays: one player a side, or two a team. */
-  static final String PLAYERS = "Players";
-
-  /** The {@value #PLAYERS} value of a battle of one player a side. */
-  static final String ONE_A_SIDE_PLAYERS = "PvP";
-
-  /** The {@value #PLAYERS} value of a team battle, two players a team. */
-  static final String TEAM_PLAYERS = "TvT";
-
-  /**
-   * The players of a battle by its game mode row's {@value #PLAYERS} value: two, sides 0 and 1, for
-   * {@value #ONE_A_SIDE_PLAYERS}; four for {@value #TEAM_PLAYERS}, sides 0 and 2 against sides 1
-   * and 3. A battle holds one avatar ({@code avatarN}), one deck ({@code deckN}) and one player
-   * data entry per player. A row of any other value is read as one of two players and its mode
-   * refused.
-   */
-  static final Map<String, Integer> PLAYERS_BY_KIND =
-      Map.of(ONE_A_SIDE_PLAYERS, ScenarioPlan.ONE_A_SIDE, TEAM_PLAYERS, ScenarioPlan.TEAM_BATTLE);
-
-  /** The game mode row of the Ladder's team battles, two players a team. */
-  public static final String LADDER_TEAM_VS_TEAM = "Ladder_TeamVsTeam";
-
-  /**
-   * The game modes of a team battle whose battles are read, by row name, each with the battle
-   * header values it is pinned to. Each is its own row, of {@value #PLAYERS} {@value
-   * #TEAM_PLAYERS}, read from its own values: a battle is read for its four players and then
-   * refused ({@link #NO_TEAM_MATCH}).
-   *
-   * <p>{@value #LADDER_TEAM_VS_TEAM}, the Ladder's team battles: its row differs from the Ladder
-   * row in who plays, whether a bot may practise it and its presentation. The header a recorded
-   * battle of it writes is not established; it is pinned to the Ladder header until one is.
-   */
-  static final Map<String, Map<String, String>> TEAM_MODES =
-      Map.of(LADDER_TEAM_VS_TEAM, LADDER_HEADER);
-
-  /**
-   * Why a team battle is refused once read: no battle mode models a team match. Its towers (one
-   * king and one princess tower per player), its map and its team rules are the team match's, which
-   * the battle core does not hold.
-   */
-  public static final String NO_TEAM_MATCH =
-      "no battle mode models a team match of four players, two a team (sides 0 and 2 against"
-          + " sides 1 and 3): its towers, map and team rules are not modelled";
-
   /**
    * How a Ladder battle's event block is read: the game reads an event's category and settings only
    * to choose the cards of a draft, which a mode whose decks are the players' own does not run.
@@ -467,21 +416,6 @@ public final class ReplayScenario {
    */
   private final List<List<String>> excludedEvolutions = new ArrayList<>();
 
-  /**
-   * The battle's players, by its game mode row's {@value #PLAYERS} ({@link #PLAYERS_BY_KIND}): two,
-   * or four in a team battle.
-   */
-  private int players = ScenarioPlan.ONE_A_SIDE;
-
-  /** The game mode row of a team battle ({@link #TEAM_MODES}), or null for any other battle. */
-  private GameRow teamMode;
-
-  /** The name of the battle's game mode row, which a team battle's refusal names. */
-  private String gameModeName;
-
-  /** A team battle's location, by row name and map, which its refusal names; else null. */
-  private String teamLocation;
-
   /** The refusals a survey has met, or null outside a survey, when a refusal is thrown. */
   private List<Refusal> refusals;
 
@@ -548,41 +482,11 @@ public final class ReplayScenario {
   /**
    * Translates a scenario.
    *
-   * <p>A team battle is read in full first, its four players, their decks and commands, so that any
-   * input of it the mapping does not know is refused as such; then the battle itself is refused,
-   * naming its game mode and location ({@link #NO_TEAM_MATCH}). This ends a survey too.
-   *
    * @param scenario the scenario document
    * @return the production inputs
    * @throws UnsupportedScenarioException for an input the production simulator has no mapping for
    */
   public ScenarioPlan translate(JsonNode scenario) {
-    ScenarioPlan plan = read(scenario);
-    if (plan.teamBattle()) {
-      throw new UnsupportedScenarioException(
-          "a team battle of game mode "
-              + gameModeName
-              + ", "
-              + plan.players()
-              + " players on "
-              + teamLocation
-              + ": "
-              + NO_TEAM_MATCH,
-          "battle.gamemode=" + scenario.path("battle").path("gamemode"));
-    }
-    return plan;
-  }
-
-  /**
-   * Reads a scenario into the production inputs as {@link #translate} does, a team battle's
-   * included: its plan holds four players ({@link ScenarioPlan#players}), which no battle mode
-   * plays ({@link ReplayBattle#build} refuses it).
-   *
-   * @param scenario the scenario document
-   * @return the production inputs, of two players or four
-   * @throws UnsupportedScenarioException for an input the production simulator has no mapping for
-   */
-  ScenarioPlan read(JsonNode scenario) {
     if (format == null) {
       // Nothing to read the scenario by: this ends a survey too.
       throw new UnsupportedScenarioException(
@@ -618,19 +522,13 @@ public final class ReplayScenario {
             "evt",
             ReplayCapture.FIELD));
     JsonNode battle = required(scenario, "battle");
-    players = players(battle);
-    List<String> sideFields = new ArrayList<>(battleFieldsBeyondThePins());
-    for (int side = 0; side < players; side++) {
-      sideFields.add("deck" + side);
-      sideFields.add("avatar" + side);
-    }
     onlyFields(
         battle,
         "battle",
         with(
             format.battlePins().keySet(),
             with(
-                sideFields,
+                battleFieldsBeyondThePins(),
                 "gmt",
                 "plt",
                 "t1s",
@@ -643,6 +541,10 @@ public final class ReplayScenario {
                 "te",
                 "tps",
                 "arena",
+                "deck0",
+                "avatar0",
+                "deck1",
+                "avatar1",
                 "location",
                 "hbd")));
     Map<String, String> modeHeader = gameMode(battle);
@@ -680,7 +582,7 @@ public final class ReplayScenario {
     List<int[]> accounts = new ArrayList<>();
     List<String> arenas = new ArrayList<>();
     List<Standard1v1Battle.Towers> towers = new ArrayList<>();
-    for (int side = 0; side < players; side++) {
+    for (int side = 0; side < 2; side++) {
       JsonNode deck = required(battle, "deck" + side);
       List<String> names = new ArrayList<>();
       List<Integer> levels = new ArrayList<>();
@@ -741,7 +643,7 @@ public final class ReplayScenario {
     for (String field : format.deckCarried()) {
       mapping.put("battle.deckN." + field, "carried: no battle input");
     }
-    if (sharesAnAccount(accounts)) {
+    if (accounts.get(0)[0] == accounts.get(1)[0] && accounts.get(0)[1] == accounts.get(1)[1]) {
       refuse("two sides of one account, whose commands name no side", "battle.avatarN.accountID");
     }
     List<ScenarioPlan.Play> plays = new ArrayList<>();
@@ -789,8 +691,7 @@ public final class ReplayScenario {
             + " unsupported");
     mapping.put(
         "cmd[i].c.idHi/idLo",
-        "consumed: the commanding side, the side whose avatar has this account id"
-            + (players == ScenarioPlan.TEAM_BATTLE ? ", avatar 0 to 3 in a team battle" : ""));
+        "consumed: the commanding side, the side whose avatar has this account id");
     mapping.put(
         "cmd[i].c.cgid",
         "consumed (ability command only): the game object id of the unit the command names,"
@@ -846,7 +747,7 @@ public final class ReplayScenario {
         abilities,
         minimum,
         excludedEvolutions.isEmpty()
-            ? ScenarioPlan.noneExcluded(players)
+            ? ScenarioPlan.NONE_EXCLUDED
             : List.copyOf(excludedEvolutions));
   }
 
@@ -920,74 +821,6 @@ public final class ReplayScenario {
   }
 
   /**
-   * The battle's players by its game mode row's {@value #PLAYERS} column ({@link
-   * #PLAYERS_BY_KIND}), checked against the avatars and decks the battle header holds: a battle of
-   * as many avatars and decks as the row gives players is read, any other count refused. A game
-   * mode id that names no row, or a row of another {@value #PLAYERS} value, is read as a battle of
-   * one player a side, and the game mode's own reading refuses it.
-   *
-   * @return the players: two, or four in a team battle
-   */
-  private int players(JsonNode battle) {
-    JsonNode id = battle.get("gamemode");
-    Optional<GameRow> mode = id == null || !id.isInt() ? Optional.empty() : find(id.asInt());
-    if (mode.isEmpty() || !mode.get().has(PLAYERS)) {
-      return ScenarioPlan.ONE_A_SIDE;
-    }
-    String kind = mode.get().string(PLAYERS);
-    Integer players = PLAYERS_BY_KIND.get(kind);
-    if (players == null) {
-      return ScenarioPlan.ONE_A_SIDE;
-    }
-    int avatars = numbered(battle, "avatar");
-    int decks = numbered(battle, "deck");
-    if (avatars != players || decks != players) {
-      refuse(
-          "a battle of "
-              + avatars
-              + " avatars and "
-              + decks
-              + " decks, where the game mode "
-              + mode.get().name()
-              + " of "
-              + PLAYERS
-              + " "
-              + kind
-              + " gives "
-              + players
-              + " players",
-          "battle.gamemode=" + id);
-    }
-    return players;
-  }
-
-  /** How many of a node's fields are a prefix and a number: {@code avatar0}, {@code avatar1}... */
-  private static int numbered(JsonNode node, String prefix) {
-    int count = 0;
-    for (Iterator<String> it = node.fieldNames(); it.hasNext(); ) {
-      String name = it.next();
-      if (name.length() > prefix.length()
-          && name.startsWith(prefix)
-          && name.substring(prefix.length()).chars().allMatch(Character::isDigit)) {
-        count++;
-      }
-    }
-    return count;
-  }
-
-  /** Whether two of the sides' avatars have one account id. */
-  private static boolean sharesAnAccount(List<int[]> accounts) {
-    for (int a = 0; a < accounts.size(); a++) {
-      for (int b = a + 1; b < accounts.size(); b++) {
-        if (accounts.get(a)[0] == accounts.get(b)[0] && accounts.get(a)[1] == accounts.get(b)[1]) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  /**
    * The players' data, one entry each: only the entry with no emotes listed is known, whose data
    * the game builds with one choice.
    *
@@ -998,12 +831,7 @@ public final class ReplayScenario {
       return playerDataWithKingLevels(battle);
     }
     List<Integer> choices = new ArrayList<>();
-    JsonNode entries = required(battle, "hbd");
-    if (entries.size() != players) {
-      throw new UnsupportedScenarioException(
-          "players' data of " + entries.size() + " entries, not one per side", "battle.hbd");
-    }
-    for (JsonNode entry : entries) {
+    for (JsonNode entry : required(battle, "hbd")) {
       if (!entry.toString().equals(NO_EMOTES)) {
         refuse(
             "a player's data other than one with no emotes listed, whose number of choices is not"
@@ -1034,13 +862,13 @@ public final class ReplayScenario {
     kingLevels.clear();
     excludedEvolutions.clear();
     JsonNode entries = required(battle, "hbd");
-    if (entries.size() != players) {
+    if (entries.size() != 2) {
       throw new UnsupportedScenarioException(
           "players' data of " + entries.size() + " entries, not one per side", "battle.hbd");
     }
     List<Integer> choices = new ArrayList<>();
     int levelCount = tables.table("rarities").row("Common").intValue("LevelCount");
-    for (int side = 0; side < players; side++) {
+    for (int side = 0; side < 2; side++) {
       JsonNode entry = entries.get(side);
       String field = "battle.hbd[" + side + "]";
       onlyFields(
@@ -1180,9 +1008,7 @@ public final class ReplayScenario {
    */
   private Map<String, String> gameMode(JsonNode battle) {
     friendlyLevel = 0;
-    teamMode = null;
     GameRow mode = row(required(battle, "gamemode").asInt(), "battle.gamemode");
-    gameModeName = mode.name();
     mapping.put(
         "battle.gamemode",
         "consumed: the game mode row, "
@@ -1191,31 +1017,9 @@ public final class ReplayScenario {
             + String.join(", ", PLAYED_AS_LADDER.keySet())
             + ", each pinning gmt, lvlcap and trail to its own values, or under an event "
             + String.join(", ", PLAYED_UNDER_AN_EVENT.keySet())
-            + ", each pinning tps to its own value; a team mode "
-            + String.join(", ", TEAM_MODES.keySet())
-            + " is read for its four players and refused: "
-            + NO_TEAM_MATCH);
+            + ", each pinning tps to its own value");
     if (mode.name().equals(LadderMatch.GAME_MODE)) {
       return LADDER_HEADER;
-    }
-    Map<String, String> teamHeader = TEAM_MODES.get(mode.name());
-    if (teamHeader != null) {
-      // A team mode is its own row: only who plays is checked here, its other values are the team
-      // match's to read.
-      if (!TEAM_PLAYERS.equals(mode.string(PLAYERS))) {
-        refuse(
-            "the team mode "
-                + mode.name()
-                + ", whose "
-                + PLAYERS
-                + " is "
-                + mode.string(PLAYERS)
-                + ", not "
-                + TEAM_PLAYERS,
-            "battle.gamemode=" + battle.get("gamemode"));
-      }
-      teamMode = mode;
-      return teamHeader;
     }
     Map<String, String> header = PLAYED_AS_LADDER.get(mode.name());
     if (header != null) {
@@ -1396,24 +1200,10 @@ public final class ReplayScenario {
     return minimum.asInt();
   }
 
-  /**
-   * The location: only one on the standard map is built. A team battle's location is read but not
-   * checked: its battle is refused, and the map it is played on is the team match's to build.
-   */
+  /** The location: only one on the standard map is built. */
   private void location(JsonNode battle) {
     GameRow location = row(required(battle, "location").asInt(), "battle.location");
     String tileMap = location.string("TileDataFileName");
-    teamLocation =
-        players == ScenarioPlan.TEAM_BATTLE
-            ? "location " + location.name() + " (map " + tileMap + ")"
-            : null;
-    if (teamMode != null) {
-      mapping.put(
-          "battle.location",
-          "read: the location row of a team battle, whose map the team match would build; the"
-              + " battle is refused");
-      return;
-    }
     if (!STANDARD_TILE_MAP.equals(tileMap)) {
       refuse(
           "the map " + tileMap + " of location " + location.name(),
@@ -1887,15 +1677,12 @@ public final class ReplayScenario {
     return given;
   }
 
-  /**
-   * The side a command's account id names: the side whose avatar has it, 0 and 1 in a battle of one
-   * player a side, 0 to 3 in a team battle.
-   */
+  /** The side a command's account id names: the side whose avatar has it. */
   private static int side(JsonNode body, String field, List<int[]> accounts) {
     int hi = required(body, "idHi").asInt();
     int lo = required(body, "idLo").asInt();
     int side = -1;
-    for (int s = 0; s < accounts.size(); s++) {
+    for (int s = 0; s < 2; s++) {
       if (accounts.get(s)[0] == hi && accounts.get(s)[1] == lo) {
         side = s;
       }
