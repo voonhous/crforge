@@ -9,22 +9,20 @@ package org.crforge.core.battle.replay;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
-import org.crforge.core.battle.unit.Standard1v1Battle;
-import org.crforge.core.battle.unit.WorldEntity;
-import org.crforge.core.pathfinding.grid.TileMap;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
  * Reading a team battle's scenario: four avatars, four decks and four players' data under a game
  * mode row of two players a team, each command named by its avatar's account id, and the battle
- * played as the team match on its location's map; what no recorded team battle holds is refused.
+ * then refused, since no battle mode models a team match.
  *
  * <p>The scenarios are synthetic: {@link Scenarios#knight()} with two more players of the same deck
  * and made-up accounts, the game mode and the location read from the tables by name.
@@ -188,84 +186,31 @@ class TeamBattleScenarioTest {
   }
 
   @Test
-  void translatesATeamBattleIntoItsTeamTowersAndItsLocationsMap() {
+  void refusesTheTeamBattleOnceReadNamingTheMissingTeamMatch() {
     ObjectNode scenario = teamKnight();
     addKnight(scenario, 4, 240);
     ScenarioItems.fitted(scenario, tables);
-
-    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
-
-    assertThat(plan.players()).isEqualTo(4);
-    // Each player's towers come from its selection's team battle spawn group.
-    String group =
-        tables
-            .table("support_cards")
-            .row(ReplayScenario.TEAM_TOWER_SELECTION)
-            .string(ReplayScenario.TEAM_SPAWN_GROUP);
-    assertThat(plan.towers()).extracting(t -> t.spawnGroup()).containsOnly(group);
-    // The map is the location's tile data.
-    assertThat(plan.tileMap())
-        .isEqualTo(tables.table("locations").row(teamLocation()).string("TileDataFileName"));
-    // A survey reads the whole battle with nothing to refuse.
-    assertThat(new ReplayScenario(tables).survey(scenario)).isEmpty();
-  }
-
-  @Test
-  void standsEachKingAtItsOwnOrItsPartnersLevelTheHigher() {
-    ObjectNode scenario = ScenarioItems.fitted(teamKnight(), tables);
-    ArrayNode data = (ArrayNode) scenario.path("battle").path("hbd");
-    int level = data.get(0).path(ReplayFormat.KING_LEVEL_FIELD).asInt();
-    // Side 0 one level up, side 3 two levels up; their partners stay.
-    ((ObjectNode) data.get(0)).put(ReplayFormat.KING_LEVEL_FIELD, level + 1);
-    ((ObjectNode) data.get(3)).put(ReplayFormat.KING_LEVEL_FIELD, level + 2);
-
-    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
-
-    // As given, then as the battle stands them: team 0 at side 0's, team 1 at side 3's.
-    assertThat(plan.towers())
-        .extracting(t -> t.kingLevel())
-        .containsExactly(level + 1, level, level, level + 2);
-    assertThat(plan.raisedTowers())
-        .extracting(t -> t.kingLevel())
-        .containsExactly(level + 1, level + 2, level + 1, level + 2);
-  }
-
-  @Test
-  void refusesPartnersPrincessTowersAtDifferentLevels() {
-    ObjectNode scenario = ScenarioItems.fitted(teamKnight(), tables);
-    ObjectNode selection = (ObjectNode) scenario.path("battle").path("deck2").path("sc").get(0);
-    selection.put("l", selection.path("l").asInt() + 1);
+    JsonNode gameMode = scenario.path("battle").path("gamemode");
 
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
         .isInstanceOfSatisfying(
             UnsupportedScenarioException.class,
             e -> {
-              assertThat(e.feature()).startsWith("partners' princess towers at levels ");
-              assertThat(e.input()).isEqualTo("battle.deck2.sc[0].l");
+              assertThat(e.feature())
+                  .contains(ReplayScenario.LADDER_TEAM_VS_TEAM)
+                  .contains(teamLocation())
+                  .endsWith(ReplayScenario.NO_TEAM_MATCH);
+              assertThat(e.input()).isEqualTo("battle.gamemode=" + gameMode);
             });
+    // A survey reads the whole battle with nothing else to refuse: the team match is the one
+    // refusal, listed last.
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .singleElement()
+        .satisfies(refusal -> assertThat(refusal.feature()).endsWith(ReplayScenario.NO_TEAM_MATCH));
   }
 
   @Test
-  void refusesATeamBattleOnAnotherMap() {
-    // A team location of the arenas table whose map is not the one a recorded team battle holds.
-    String other =
-        tables.table("locations").rows().stream()
-            .filter(row -> row.name().startsWith("TeamVsTeam"))
-            .filter(row -> !ReplayScenario.TEAM_TILE_MAP.equals(row.string("TileDataFileName")))
-            .map(GameRow::name)
-            .findFirst()
-            .orElseThrow();
-    ObjectNode scenario = ScenarioItems.fitted(teamKnight(), tables);
-    ((ObjectNode) scenario.path("battle")).put("location", dataId("locations", other));
-
-    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
-        .isInstanceOfSatisfying(
-            UnsupportedScenarioException.class,
-            e -> assertThat(e.feature()).contains("of the team battle location " + other));
-  }
-
-  @Test
-  void surveysATeamBattleOfAnUnregisteredTeamRowWithItsModeRefused() {
+  void surveysATeamBattleOfAnUnregisteredTeamRowWithItsModeAndTheTeamMatchRefused() {
     // A row of two players a team that no registry entry admits: the first such row of the
     // tables, read by its Players column.
     String unregistered =
@@ -283,30 +228,18 @@ class TeamBattleScenarioTest {
 
     assertThat(refusals).isNotEmpty();
     assertThat(refusals.get(0).feature()).startsWith("the game mode " + unregistered);
+    assertThat(refusals.get(refusals.size() - 1).feature())
+        .startsWith("a team battle of game mode " + unregistered + ", 4 players on location ")
+        .endsWith(ReplayScenario.NO_TEAM_MATCH);
   }
 
   @Test
-  void theReplayBattlePlaysAPlanOfFourPlayersAsTheTeamMatch() {
-    ScenarioPlan plan =
-        new ReplayScenario(tables).translate(ScenarioItems.fitted(teamKnight(), tables));
+  void theReplayBattleRefusesAPlanOfFourPlayers() {
+    ScenarioPlan plan = new ReplayScenario(tables).read(ScenarioItems.fitted(teamKnight(), tables));
 
-    Standard1v1Battle battle = ReplayBattle.build(tables, plan);
-
-    assertThat(battle.getWorld().teamBattle()).isTrue();
-    assertThat(battle.getMatch().playerCount()).isEqualTo(4);
-    // One king and one princess tower a player, and each team's middle piece.
-    assertThat(battle.getBattle().getHolder().entities())
-        .hasSize(4 * 2 + 2)
-        .allMatch(e -> e instanceof WorldEntity);
-    // On the location's map, cell for cell.
-    TileMap map = tables.tileMap(plan.tileMap());
-    TileMap played = battle.getWorld().getTileMap();
-    assertThat(played.width()).isEqualTo(map.width());
-    assertThat(played.height()).isEqualTo(map.height());
-    for (int row = 0; row < map.height(); row++) {
-      for (int col = 0; col < map.width(); col++) {
-        assertThat(played.bits(col, row)).isEqualTo(map.bits(col, row));
-      }
-    }
+    assertThatThrownBy(() -> ReplayBattle.build(tables, plan))
+        .isInstanceOfSatisfying(
+            UnsupportedScenarioException.class,
+            e -> assertThat(e.feature()).isEqualTo(ReplayScenario.NO_TEAM_MATCH));
   }
 }

@@ -38,12 +38,7 @@ import org.crforge.core.pathfinding.target.TargetView;
         "Settled: x and y as the context entity's position as it stands when the expression"
             + " is evaluated; king_tower_damaged as the context side's king tower below its"
             + " maximum hit points, and tower_destroyed as that side down to fewer than two"
-            + " princess towers; coop_king_tower_damaged and coop_tower_destroyed as 0 in a battle"
-            + " of two players; in a team battle, traced and held by the team battle reference"
-            + " battles where nothing wakes a king: tower_destroyed as the side's own princess"
-            + " tower gone, the co-op functions as the partner side's king_tower_damaged and"
-            + " tower_destroyed, each king read by its own hit points; team_index as the side's"
-            + " low bit, 2 for the neutral side;"
+            + " princess towers; team_index as the side's low bit, 2 for the neutral side;"
             + " team_y_direction as -1 for 0 and 1 for anything else; map_width and map_height"
             + " as the arena's cells times 500; a character or building row's name, after the"
             + " functions, variables and tags, as its global id, 0 for a negative one, and"
@@ -306,18 +301,19 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       return context.getView().getY();
     }
     if (id == KING_TOWER_DAMAGED) {
-      return kingTowerDamaged(context.side());
+      TowerEntity king = world.kingTower(context.side());
+      return king != null
+              && king.getHitPoints() != null
+              && king.getHitPoints().getHitPoints() < king.getHitPoints().getMaximum()
+          ? 1
+          : 0;
     }
     if (id == TOWER_DESTROYED) {
-      return towerDestroyed(context.side());
+      return world.princessTowerCount(context.side()) < PRINCESS_TOWERS_KEPT ? 1 : 0;
     }
     if (id == COOP_KING_TOWER_DAMAGED || id == COOP_TOWER_DESTROYED) {
-      // The partner's own answer; a battle of two players has no partner, and answers 0.
-      int partner = world.partner(context.side());
-      if (partner < 0) {
-        return 0;
-      }
-      return id == COOP_KING_TOWER_DAMAGED ? kingTowerDamaged(partner) : towerDestroyed(partner);
+      // A battle of two players has no co-op side.
+      return 0;
     }
     if (id == TEAM_INDEX) {
       int side = context.side();
@@ -480,32 +476,6 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   }
 
   /**
-   * king_tower_damaged for a side: its own king tower below its maximum hit points, each king's own
-   * hit points in a team battle too.
-   */
-  private int kingTowerDamaged(int side) {
-    TowerEntity king = world.kingTower(side);
-    return king != null
-            && king.getHitPoints() != null
-            && king.getHitPoints().getHitPoints() < king.getHitPoints().getMaximum()
-        ? 1
-        : 0;
-  }
-
-  /**
-   * tower_destroyed for a side: in a battle of one player a side, the side down to fewer than two
-   * princess towers; in a team battle, where each player has one, the side's own princess tower
-   * gone from its team's list. A negative side answers 0.
-   */
-  private int towerDestroyed(int side) {
-    if (side < 0) {
-      return 0;
-    }
-    int kept = world.teamBattle() ? 1 : PRINCESS_TOWERS_KEPT;
-    return world.princessTowerCount(side) < kept ? 1 : 0;
-  }
-
-  /**
    * has_crown_tower_in_range(range): 1 when a crown tower of the other side is within the range of
    * the context, measured from the tower's edge and the context's own, as target_in_range measures
    * from its reference: the squared distance between the two centres at most the square of the
@@ -531,12 +501,6 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
           "has_crown_tower_in_range on "
               + context.name()
               + " of the neutral side, not established");
-    }
-    if (world.teamBattle()) {
-      throw new UnsupportedOperationException(
-          "has_crown_tower_in_range on "
-              + context.name()
-              + " in a team battle, whose other team has two players' towers, is not modelled");
     }
     int otherSide = (side & 1) ^ 1;
     long reach = (long) range + context.getData().collisionRadius();

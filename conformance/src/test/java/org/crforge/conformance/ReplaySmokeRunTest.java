@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -705,27 +704,6 @@ class ReplaySmokeRunTest {
     JsonNode invalidManifest = MAPPER.readTree(folder.resolve("invalid/manifest.json").toFile());
     assertThat(stopped.status()).isEqualTo("invalid");
     assertThat(stopped.manifest().get("error")).isEqualTo(invalidManifest.path("error").asText());
-  }
-
-  @Test
-  void aTeamBattleIsObservedWithItsFourSidesAndTenObjects() throws IOException {
-    GameTables tables = GameTables.load(tablesFolder);
-    ObjectNode team = fit(Scenarios.teamKnight(tables));
-
-    ReplaySmokeRun.InProcessRun run =
-        ReplaySmokeRun.runInProcess(SmokeSchema.V2, 30, MAPPER.writeValueAsBytes(team), tables);
-
-    assertThat(run.status()).isEqualTo("completed");
-    JsonNode first =
-        MAPPER.readTree(new String(run.trace(), StandardCharsets.UTF_8).lines().findFirst().get());
-    assertThat(first.path("avatar_count").asInt()).isEqualTo(4);
-    assertThat(first.path("sides")).hasSize(4);
-    for (int side = 0; side < 4; side++) {
-      assertThat(first.path("sides").get(side).path("side").asInt()).isEqualTo(side);
-    }
-    // One king and one princess tower a player, then each team's middle piece, without hit points.
-    assertThat(first.path("entities")).hasSize(10);
-    assertThat(first.path("entities").get(9).path("hp").isNull()).isTrue();
   }
 
   @Test

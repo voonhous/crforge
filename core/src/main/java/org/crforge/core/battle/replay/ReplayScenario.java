@@ -82,11 +82,9 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  *
  * <p>A team battle, four players two a team under a game mode row of {@link #TEAM_MODES}, is read
  * as a battle of one player a side is, for each of its four avatars, decks and players' data, each
- * command naming its player by its avatar's account id, and played as the team match. Of a team
- * battle only what a recorded team battle holds is read: the map of {@value #TEAM_TILE_MAP}, the
- * princess towers' selection placed from its team battle spawn group, partners whose princess
- * towers stand at one level, and no card level minimum. The avatars and decks a battle holds must
- * be as many as its game mode row's {@value #PLAYERS} column gives players ({@link
+ * command naming its player by its avatar's account id; then {@link #translate} refuses it, as no
+ * battle mode models a team match ({@link #NO_TEAM_MATCH}). The avatars and decks a battle holds
+ * must be as many as its game mode row's {@value #PLAYERS} column gives players ({@link
  * #PLAYERS_BY_KIND}).
  *
  * <p>{@link #translate} stops at the first input it cannot map. {@link #survey} reads the same
@@ -300,8 +298,8 @@ public final class ReplayScenario {
   /**
    * The game modes of a team battle whose battles are read, by row name, each with the battle
    * header values it is pinned to. Each is its own row, of {@value #PLAYERS} {@value
-   * #TEAM_PLAYERS}, read from its own values: a battle is read for its four players and played as
-   * the team match.
+   * #TEAM_PLAYERS}, read from its own values: a battle is read for its four players and then
+   * refused ({@link #NO_TEAM_MATCH}).
    *
    * <p>{@value #LADDER_TEAM_VS_TEAM}, the Ladder's team battles: its row differs from the Ladder
    * row in who plays, whether a bot may practise it and its presentation. The header a recorded
@@ -310,14 +308,14 @@ public final class ReplayScenario {
   static final Map<String, Map<String, String>> TEAM_MODES =
       Map.of(LADDER_TEAM_VS_TEAM, LADDER_HEADER);
 
-  /** The map of the team battles a recorded team battle holds, its location's tile data. */
-  public static final String TEAM_TILE_MAP = "tilemaps/tilemap_2v2.csv";
-
-  /** The tower selection of the team battles a recorded team battle holds. */
-  public static final String TEAM_TOWER_SELECTION = "King_PrincessTowers";
-
-  /** The support card column that names a tower selection's spawn group in a team battle. */
-  public static final String TEAM_SPAWN_GROUP = "SpawnGroup2v2";
+  /**
+   * Why a team battle is refused once read: no battle mode models a team match. Its towers (one
+   * king and one princess tower per player), its map and its team rules are the team match's, which
+   * the battle core does not hold.
+   */
+  public static final String NO_TEAM_MATCH =
+      "no battle mode models a team match of four players, two a team (sides 0 and 2 against"
+          + " sides 1 and 3): its towers, map and team rules are not modelled";
 
   /**
    * How a Ladder battle's event block is read: the game reads an event's category and settings only
@@ -355,7 +353,7 @@ public final class ReplayScenario {
           + " Mirror's or a variant card's play of a raised card is unsupported";
 
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
-  public static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
+  static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
 
   /**
    * How the battle header's {@code arena} is read: the players' trophy arena, whose row holds
@@ -478,8 +476,11 @@ public final class ReplayScenario {
   /** The game mode row of a team battle ({@link #TEAM_MODES}), or null for any other battle. */
   private GameRow teamMode;
 
-  /** The map the battle is played on: its location's tile data. */
-  private String tileMap;
+  /** The name of the battle's game mode row, which a team battle's refusal names. */
+  private String gameModeName;
+
+  /** A team battle's location, by row name and map, which its refusal names; else null. */
+  private String teamLocation;
 
   /** The refusals a survey has met, or null outside a survey, when a refusal is thrown. */
   private List<Refusal> refusals;
@@ -545,18 +546,42 @@ public final class ReplayScenario {
   }
 
   /**
-   * Translates a scenario: a battle of one player a side or a team battle, whose plan holds four
-   * players ({@link ScenarioPlan#players}), played as the team match ({@link ReplayBattle#build}).
+   * Translates a scenario.
+   *
+   * <p>A team battle is read in full first, its four players, their decks and commands, so that any
+   * input of it the mapping does not know is refused as such; then the battle itself is refused,
+   * naming its game mode and location ({@link #NO_TEAM_MATCH}). This ends a survey too.
+   *
+   * @param scenario the scenario document
+   * @return the production inputs
+   * @throws UnsupportedScenarioException for an input the production simulator has no mapping for
+   */
+  public ScenarioPlan translate(JsonNode scenario) {
+    ScenarioPlan plan = read(scenario);
+    if (plan.teamBattle()) {
+      throw new UnsupportedScenarioException(
+          "a team battle of game mode "
+              + gameModeName
+              + ", "
+              + plan.players()
+              + " players on "
+              + teamLocation
+              + ": "
+              + NO_TEAM_MATCH,
+          "battle.gamemode=" + scenario.path("battle").path("gamemode"));
+    }
+    return plan;
+  }
+
+  /**
+   * Reads a scenario into the production inputs as {@link #translate} does, a team battle's
+   * included: its plan holds four players ({@link ScenarioPlan#players}), which no battle mode
+   * plays ({@link ReplayBattle#build} refuses it).
    *
    * @param scenario the scenario document
    * @return the production inputs, of two players or four
    * @throws UnsupportedScenarioException for an input the production simulator has no mapping for
    */
-  public ScenarioPlan translate(JsonNode scenario) {
-    return read(scenario);
-  }
-
-  /** Reads a scenario into the production inputs, as {@link #translate} does. */
   ScenarioPlan read(JsonNode scenario) {
     if (format == null) {
       // Nothing to read the scenario by: this ends a survey too.
@@ -682,9 +707,6 @@ public final class ReplayScenario {
       pin(battle, ReplayFormat.CARD_LEVEL_MIN_FIELD, "0");
     } else if (format.ladderEvents()) {
       minimum = cardLevelMinimum(battle);
-    }
-    if (teamMode != null) {
-      teamLevels(towers, minimum);
     }
     // The levels the battle's deck holds: each deck card's raised by the minimum. A play is checked
     // against them and the levels as given.
@@ -825,8 +847,7 @@ public final class ReplayScenario {
         minimum,
         excludedEvolutions.isEmpty()
             ? ScenarioPlan.noneExcluded(players)
-            : List.copyOf(excludedEvolutions),
-        teamMode != null ? tileMap : STANDARD_TILE_MAP);
+            : List.copyOf(excludedEvolutions));
   }
 
   /**
@@ -1161,6 +1182,7 @@ public final class ReplayScenario {
     friendlyLevel = 0;
     teamMode = null;
     GameRow mode = row(required(battle, "gamemode").asInt(), "battle.gamemode");
+    gameModeName = mode.name();
     mapping.put(
         "battle.gamemode",
         "consumed: the game mode row, "
@@ -1171,7 +1193,8 @@ public final class ReplayScenario {
             + String.join(", ", PLAYED_UNDER_AN_EVENT.keySet())
             + ", each pinning tps to its own value; a team mode "
             + String.join(", ", TEAM_MODES.keySet())
-            + ", read for its four players and played as the team match");
+            + " is read for its four players and refused: "
+            + NO_TEAM_MATCH);
     if (mode.name().equals(LadderMatch.GAME_MODE)) {
       return LADDER_HEADER;
     }
@@ -1374,27 +1397,21 @@ public final class ReplayScenario {
   }
 
   /**
-   * The location: a battle of one player a side is built only on the standard map; a team battle on
-   * its location's map, only {@value #TEAM_TILE_MAP}, the map a recorded team battle holds.
+   * The location: only one on the standard map is built. A team battle's location is read but not
+   * checked: its battle is refused, and the map it is played on is the team match's to build.
    */
   private void location(JsonNode battle) {
     GameRow location = row(required(battle, "location").asInt(), "battle.location");
-    tileMap = location.string("TileDataFileName");
+    String tileMap = location.string("TileDataFileName");
+    teamLocation =
+        players == ScenarioPlan.TEAM_BATTLE
+            ? "location " + location.name() + " (map " + tileMap + ")"
+            : null;
     if (teamMode != null) {
-      if (!TEAM_TILE_MAP.equals(tileMap)) {
-        refuse(
-            "the map "
-                + tileMap
-                + " of the team battle location "
-                + location.name()
-                + ", which no recorded team battle holds",
-            "battle.location=" + battle.get("location"));
-      }
       mapping.put(
           "battle.location",
-          "consumed: the location row of a team battle, whose map must be "
-              + TEAM_TILE_MAP
-              + ", read from the tables");
+          "read: the location row of a team battle, whose map the team match would build; the"
+              + " battle is refused");
       return;
     }
     if (!STANDARD_TILE_MAP.equals(tileMap)) {
@@ -1484,9 +1501,6 @@ public final class ReplayScenario {
         !kingLevels.isEmpty()
             ? kingLevels.get(side)
             : shape == ScenarioShape.GENERATED ? GENERATED_KING_LEVEL : KING_LEVEL;
-    if (teamMode != null) {
-      return teamTowers(card, kingLevel, levelIndex + rarity.intValue("RelativeLevel") + 1, field);
-    }
     if (friendlyLevel > 0) {
       // Under the Friendly adjustment the game puts the king and the towers at one level of its
       // own, whatever the replay's.
@@ -1496,67 +1510,6 @@ public final class ReplayScenario {
     }
     return new Standard1v1Battle.Towers(
         card.string("SpawnGroup"), kingLevel, levelIndex + rarity.intValue("RelativeLevel") + 1);
-  }
-
-  /**
-   * Refuses the team battle levels no recorded team battle holds: partners whose princess towers
-   * stand at different levels, which the game's level rule for a team battle may set to the
-   * partners' higher one, and a card level minimum, which would raise them.
-   */
-  private void teamLevels(List<Standard1v1Battle.Towers> towers, int minimum) {
-    if (minimum != 0) {
-      refuse(
-          "a card level minimum of "
-              + minimum
-              + " in a team battle, which no recorded team battle"
-              + " holds",
-          "battle." + ReplayFormat.CARD_LEVEL_MIN_FIELD);
-    }
-    for (int side = 0; side < 2; side++) {
-      int partner = side + 2;
-      if (towers.get(side).level() != towers.get(partner).level()) {
-        refuse(
-            "partners' princess towers at levels "
-                + towers.get(side).level()
-                + " and "
-                + towers.get(partner).level()
-                + " in a team battle, whose level rule for partners no recorded team battle"
-                + " holds",
-            "battle.deck" + partner + ".sc[0].l");
-      }
-    }
-  }
-
-  /**
-   * A team battle player's towers: the tower selection's team battle spawn group ({@value
-   * #TEAM_SPAWN_GROUP}), one king and one princess tower, at the side's king level and the
-   * selection's level. Only the princess towers' selection, {@value #TEAM_TOWER_SELECTION}, is held
-   * by a recorded team battle; another is refused.
-   */
-  private Standard1v1Battle.Towers teamTowers(
-      GameRow card, int kingLevel, int level, String field) {
-    if (!TEAM_TOWER_SELECTION.equals(card.name())) {
-      refuse(
-          "the tower selection "
-              + card.name()
-              + " in a team battle, which no recorded team battle"
-              + " holds",
-          field + "[0].d");
-    }
-    String group = card.string(TEAM_SPAWN_GROUP);
-    if (group == null || group.isEmpty()) {
-      refuse(
-          "the tower selection " + card.name() + ", which names no " + TEAM_SPAWN_GROUP,
-          field + "[0].d");
-    }
-    mapping.put(
-        "battle.deckN.sc[0].d",
-        "consumed: the tower selection, a support card; in a team battle only "
-            + TEAM_TOWER_SELECTION
-            + ", whose "
-            + TEAM_SPAWN_GROUP
-            + " places the player's king and princess tower");
-    return new Standard1v1Battle.Towers(group, kingLevel, level);
   }
 
   /**

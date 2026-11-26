@@ -679,7 +679,6 @@ public class CharacterEntity extends WorldEntity {
                 .withHovering(data.hovering()),
             speedConfig(data),
             StateVisitConfig.forGroundUnit(data.deployTimeMs())
-                .withKingTowerMiddle(data.name().equals(Standard1v1Battle.KING_TOWER_MIDDLE))
                 .withDash(data.dashLandingTimeMs(), data.dashImmuneToDamageTimeMs())
                 .withSpawnPathfindMorph(data.spawnPathfindMorph() != null)
                 .withIngamePathfindArrival(data.ingamePathfindStopDeploys())
@@ -2115,12 +2114,8 @@ public class CharacterEntity extends WorldEntity {
     view.setState(GridEntityState.DEPLOYING);
     view.setDeployCountdown(data.deployTimeMs());
     view.setDirX(0);
-    // Team 0 faces as side 0 does: a team battle's side 2 as side 0, side 3 as side 1; the neutral
-    // side as side 1.
     view.setDirY(
-        side == SIDE_BOTTOM || side == SIDE_BOTTOM + 2
-            ? MovementState.DIRECTION_SCALE
-            : -MovementState.DIRECTION_SCALE);
+        side == SIDE_BOTTOM ? MovementState.DIRECTION_SCALE : -MovementState.DIRECTION_SCALE);
     return view;
   }
 

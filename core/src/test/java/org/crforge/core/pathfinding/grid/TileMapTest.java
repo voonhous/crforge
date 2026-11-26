@@ -147,39 +147,6 @@ class TileMapTest {
         .hasMessageContaining("not found");
   }
 
-  @Test
-  void readsAGameMapFileUpToItsNextSection() {
-    // A map of three columns and two rows as the game writes one: the section's name, the column
-    // names, their types, the rows each led by an empty cell (an empty value is 0), then a section.
-    String text = "Map,,,\n,x,x,x\n,int,int,int\n,16,,1\r\n,0,96,129\nLayout,,,\n,5,5,5\n";
-
-    TileMap read = TileMapLoader.parseGameFile(text, "synthetic.csv");
-
-    assertThat(read.width()).isEqualTo(3);
-    assertThat(read.height()).isEqualTo(2);
-    assertThat(read.bits(0, 0)).isEqualTo(TileMap.NOT_PLACEABLE_BIT);
-    assertThat(read.bits(1, 0)).isZero();
-    assertThat(read.bits(2, 0)).isEqualTo(1);
-    assertThat(read.bits(1, 1)).isEqualTo(TileMap.WATER_BIT | TileMap.BLOCKED_BIT);
-    // A bit above the routing bits is masked away as for the bundled map.
-    assertThat(read.bits(2, 1)).isEqualTo(1);
-  }
-
-  @Test
-  void refusesAGameMapFileOfUnevenRowsOrNoRows() {
-    assertThatThrownBy(
-            () -> TileMapLoader.parseGameFile("Map,,\n,x,x\n,int,int\n,1,2\n,1\n", "uneven"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("expected 2 values");
-    assertThatThrownBy(() -> TileMapLoader.parseGameFile("Map,\n,x\n,int\nEnd,\n", "empty"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("no map rows");
-    assertThatThrownBy(
-            () -> TileMapLoader.parseGameFile("Layout,,\n,x,y\n,int,int\n,1,2\n", "layout"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("not the map's");
-  }
-
   private int countWhere(int bit) {
     int count = 0;
     for (int row = 0; row < map.height(); row++) {

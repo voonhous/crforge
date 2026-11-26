@@ -25,11 +25,13 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * @param seed the battle stream's seed
  *     <p>A side is a player's index: 0 and 1 in a battle of one player a side, 0 to 3 in a team
  *     battle ({@link #players}), each list below holding one entry per player. A team battle's plan
- *     is played as the team match ({@link ReplayBattle#build}).
+ *     is read but not played: no battle mode models a team match ({@link ReplayBattle#build}
+ *     refuses it).
  * @param towers each side's towers as the replay gives them: the spawn group of its tower
  *     selection, with the level of its king row and of its other rows, counted from 1; the battle
- *     stands them at {@link #raisedTowers}. A team battle's plan names each selection's team battle
- *     spawn group, which places one king and one princess tower a player
+ *     stands them at {@link #raisedTowers}. A team battle's plan, which no battle plays, names each
+ *     selection's spawn group as a battle of one player a side places it; which towers a team
+ *     battle places is the team match's to read
  * @param decks each side's deck, by card row name, in the scenario's order
  * @param deckLevels each side's card levels by deck index as the replay gives them, counted from 1
  *     across all rarities; the battle's deck holds them at {@link #raisedDeckLevels}
@@ -49,9 +51,6 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  *     ReplayFormat#EXCLUDED_EVOLUTIONS_FIELD}), by row name in the order its player's data lists
  *     them, empty where it lists none; an evolved Mirror repeats a card whose evolved row its side
  *     lists as the card itself
- * @param tileMap the map the battle is played on: its location's tile data, by the path the
- *     location names it ({@code TileDataFileName}), the standard arena's for a battle of one player
- *     a side
  */
 public record ScenarioPlan(
     int seed,
@@ -65,8 +64,7 @@ public record ScenarioPlan(
     List<Play> plays,
     List<Ability> abilities,
     int cardLevelMinimum,
-    List<List<String>> excludedEvolutions,
-    String tileMap) {
+    List<List<String>> excludedEvolutions) {
 
   /** Two sides that list no excluded evolution, as a replay that does not read them gives. */
   public static final List<List<String>> NONE_EXCLUDED = List.of(List.of(), List.of());
@@ -84,7 +82,6 @@ public record ScenarioPlan(
    * player, {@value #ONE_A_SIDE} or {@value #TEAM_BATTLE}.
    */
   public ScenarioPlan {
-    checkArgument(tileMap != null && !tileMap.isEmpty(), "a plan names the map it is played on");
     int players = decks.size();
     checkArgument(
         players == ONE_A_SIDE || players == TEAM_BATTLE,
@@ -94,40 +91,6 @@ public record ScenarioPlan(
         sides == players,
         () -> "excluded evolutions of " + sides + " sides, not one per player of " + players);
     excludedEvolutions = excludedEvolutions.stream().map(List::copyOf).toList();
-  }
-
-  /**
-   * A plan played on the standard arena's map, as a battle of one player a side is.
-   *
-   * @see ScenarioPlan the components
-   */
-  public ScenarioPlan(
-      int seed,
-      List<Standard1v1Battle.Towers> towers,
-      List<List<String>> decks,
-      List<int[]> deckLevels,
-      List<int[]> slotFlags,
-      List<int[]> accounts,
-      List<String> arenas,
-      List<Integer> playerDataChoices,
-      List<Play> plays,
-      List<Ability> abilities,
-      int cardLevelMinimum,
-      List<List<String>> excludedEvolutions) {
-    this(
-        seed,
-        towers,
-        decks,
-        deckLevels,
-        slotFlags,
-        accounts,
-        arenas,
-        playerDataChoices,
-        plays,
-        abilities,
-        cardLevelMinimum,
-        excludedEvolutions,
-        ReplayScenario.STANDARD_TILE_MAP);
   }
 
   /**
@@ -218,20 +181,15 @@ public record ScenarioPlan(
   /**
    * Each side's towers as the battle stands them: the princess rows (the tower selection's level)
    * raised by the card level minimum ({@link #raised}), the king row at its own level, which the
-   * minimum does not raise under the Ladder row. In a team battle, under the team Ladder row's
-   * Ladder level adjustment, each king stands at the higher of its own level and its partner's.
+   * minimum does not raise under the Ladder row.
    *
    * @return the towers the battle is built with
    */
   public List<Standard1v1Battle.Towers> raisedTowers() {
     List<Standard1v1Battle.Towers> raised = new ArrayList<>();
-    for (int side = 0; side < towers.size(); side++) {
-      Standard1v1Battle.Towers own = towers.get(side);
-      int kingLevel = own.kingLevel();
-      if (teamBattle()) {
-        kingLevel = Math.max(kingLevel, towers.get(partner(side)).kingLevel());
-      }
-      raised.add(new Standard1v1Battle.Towers(own.spawnGroup(), kingLevel, raised(own.level())));
+    for (Standard1v1Battle.Towers side : towers) {
+      raised.add(
+          new Standard1v1Battle.Towers(side.spawnGroup(), side.kingLevel(), raised(side.level())));
     }
     return raised;
   }

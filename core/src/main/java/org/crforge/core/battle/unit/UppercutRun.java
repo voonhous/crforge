@@ -193,7 +193,6 @@ final class UppercutRun extends ActionInstance {
     for (TowerEntity tower : unit.world().princessTowers(target.side())) {
       nearer(tx, ty, tower);
     }
-    unit.world().refuseInTeamBattle(row.name() + "'s push toward the king facing " + unit.name());
     TowerEntity king = unit.world().kingTower(WorldEntity.opposing(unit.side()));
     if (king == null) {
       throw new UnsupportedOperationException(

@@ -736,7 +736,6 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     boolean first = true;
     for (int i = 0; i < listed.size() && left > 0; i++) {
       WorldEntity target = listed.get(i);
-      refuseTeamKing(target);
       // One hit per target: an object already reached is passed by, anything else listed as
       // reached. A row that pushes continuously pushes a reached object again, and pulls it, when
       // its movement is on, and gives it nothing else; neither counts against the row's maximum.
@@ -775,7 +774,6 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       }
       // The hit action, built for the object and scheduled on it, the area effect the cause.
       if (data.onHitAction() != null) {
-        refuseTeamKing(target);
         BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
         world.getEvents().onHitActionScheduled(this, target, action);
         target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
@@ -910,7 +908,6 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     }
     for (int i = 0; i < hits; i++) {
       for (WorldEntity target : listed) {
-        refuseTeamKing(target);
         BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
         target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
       }
@@ -954,7 +951,6 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         // The hit action first, on every hit: built for the target and scheduled there, the area
         // effect as the cause.
         if (data.onHitAction() != null) {
-          refuseTeamKing(target);
           BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
           target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
         }
@@ -1145,7 +1141,6 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         if (!onHitFilter(target)) {
           continue;
         }
-        refuseTeamKing(target);
         BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
         world.getEvents().onHitActionScheduled(this, target, action);
         target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
@@ -1471,24 +1466,6 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     return t > small ? Math.min(t, big) : small;
   }
 
-  /**
-   * Refuses an area effect's hit on a king in a team battle: the game then lists the partner's king
-   * as reached too, so the area effect never hits that half of the team's king, and carries a buff
-   * without damage over time to the partner's king and the team's middle piece, which the battle
-   * core does not model.
-   */
-  private void refuseTeamKing(WorldEntity target) {
-    if (world.teamBattle() && target.getData().king()) {
-      throw new UnsupportedOperationException(
-          "the hit of the area effect "
-              + data.name()
-              + " on "
-              + target.name()
-              + ", a king of a team battle, which lists its partner's king as reached and carries"
-              + " its buff to that king and the team's middle piece, is not modelled");
-    }
-  }
-
   /** One hit: the area damage around it, with itself as the owner. */
   private void hit(int radius, int damage) {
     asking = "area_damage";
@@ -1527,7 +1504,6 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
               @Override
               public DamageResult damage(TargetView victim, int amount, int hitId) {
-                refuseTeamKing(world.entityOf(victim.getEntity()));
                 return world
                     .getHits()
                     .dealAreaEffectDamage(

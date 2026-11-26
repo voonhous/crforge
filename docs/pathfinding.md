@@ -205,7 +205,7 @@ The integration requirements this document previously listed are now implemented
 
 What is left are the cases outside the current scope and the pieces below.
 
-- **Event maps** are out of scope: the battle core plays the standard arena, and a 2v2 battle on its location's map read from the game tables ([The battle core](battle-core.md)).
+- **2v2 and event maps** are out of scope: the battle core plays the standard arena only ([The battle core](battle-core.md)).
 - **Blocks the entity state visit does not carry**: the buff a unit gets while it is not attacking, the self-damage of a kamikaze unit, elixir generation, the hide handling, the morph timer with its growth scale, and the live spawner.
   - The battle core runs the not-attacking section and the hide handler where the visit reaches them, and a hiding row's targeting visit at its deploy end.
   - Each is gated by a configuration column belonging to a part of the simulation outside movement and routing, and none of them changes a state or a position that routing reads.

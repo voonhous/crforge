@@ -105,7 +105,6 @@ final class WarpRun extends ActionInstance {
 
   /** The row's offsets onto the destination, the length one negated for side 1. */
   private void addOffsets() {
-    unit.world().refuseInTeamBattle(unit.name() + "'s warp offsets, mirrored by its side,");
     destX += flight.offsetX();
     destY += unit.side() == 0 ? flight.offsetY() : -flight.offsetY();
   }

@@ -678,16 +678,6 @@ final class ProjectileFlight {
 
               @Override
               public DamageResult damage(TargetView victim, int dealt, int id) {
-                if (shared != null
-                    && world.teamBattle()
-                    && world.entityOf(victim.getEntity()).getData().king()) {
-                  // The game lists the struck king's partner in the chain's list too.
-                  throw new UnsupportedOperationException(
-                      "the hit of a chain of "
-                          + p.getData().name()
-                          + " on a king of a team battle, whose partner's king the chain then"
-                          + " counts as hit too, is not modelled");
-                }
                 // The area hands the damage on without a direction, queued for the damage drain.
                 return world
                     .getHits()

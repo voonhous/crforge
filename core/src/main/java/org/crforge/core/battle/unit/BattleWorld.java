@@ -1237,103 +1237,6 @@ public class BattleWorld implements HolderPasses {
     return out;
   }
 
-  /** The players of a battle of one player a side, sides 0 and 1. */
-  public static final int ONE_A_SIDE = 2;
-
-  /** The players of a team battle: sides 0 and 2 are team 0, sides 1 and 3 team 1. */
-  public static final int TEAM_BATTLE = 4;
-
-  /** The side of an object that belongs to neither player, which is of team 2. */
-  private static final int NEUTRAL_SIDE = 100;
-
-  /** The team of the neutral side. */
-  private static final int NEUTRAL_TEAM = 2;
-
-  /**
-   * The battle's players, its avatar count: {@value #ONE_A_SIDE}, or {@value #TEAM_BATTLE} in a
-   * team battle. It is set before the towers are made, which a team battle makes otherwise.
-   */
-  @Getter private int avatarCount = ONE_A_SIDE;
-
-  /**
-   * Sets the battle's players before anything is made in it.
-   *
-   * @param avatarCount {@value #ONE_A_SIDE} or {@value #TEAM_BATTLE}
-   */
-  public void setAvatarCount(int avatarCount) {
-    checkState(
-        avatarCount == ONE_A_SIDE || avatarCount == TEAM_BATTLE,
-        () -> "a battle of " + avatarCount + " players");
-    checkState(holder.entities().isEmpty(), "the players are set before anything is made");
-    this.avatarCount = avatarCount;
-  }
-
-  /** Whether the battle is a team battle, of {@value #TEAM_BATTLE} players two a team. */
-  public boolean teamBattle() {
-    return avatarCount == TEAM_BATTLE;
-  }
-
-  /**
-   * Refuses, in a team battle, a rule whose mirror or facing the battle core takes from the side as
-   * a battle of two has it: the game mirrors such rules by the team in a team battle, or asks the
-   * other team's two players, which is not modelled.
-   *
-   * @param what the rule and its object, as the refusal names them
-   * @throws UnsupportedOperationException in a team battle
-   */
-  public void refuseInTeamBattle(String what) {
-    if (teamBattle()) {
-      throw new UnsupportedOperationException(
-          what
-              + " in a team battle, whose mirror by team or other team's two players is not"
-              + " modelled");
-    }
-  }
-
-  /**
-   * The team of a side, as the game asks it: the side's parity, so sides 0 and 2 are team 0 and
-   * sides 1 and 3 team 1, and team 2 for the neutral side. In a battle of one player a side the
-   * team is the side.
-   *
-   * @param side a side
-   * @return its team
-   */
-  public static int team(int side) {
-    return side == NEUTRAL_SIDE ? NEUTRAL_TEAM : side % 2;
-  }
-
-  /**
-   * The partner of a side in a team battle: side 0 and side 2 are partners, side 1 and side 3; a
-   * battle of one player a side, and the neutral side, have none.
-   *
-   * @param side a side
-   * @return the partner's side, or -1 for none
-   */
-  public int partner(int side) {
-    if (!teamBattle() || side < 0 || side >= TEAM_BATTLE) {
-      return -1;
-    }
-    return (side + 2) % TEAM_BATTLE;
-  }
-
-  /**
-   * A team's middle piece in a team battle, the {@value Standard1v1Battle#KING_TOWER_MIDDLE} its
-   * kings stand beside: the first one of the team still in the battle, as the game finds it.
-   *
-   * @param team 0 or 1
-   * @throws IllegalStateException when the team has none
-   */
-  CharacterEntity teamMiddle(int team) {
-    for (BattleEntity entity : holder.entities()) {
-      if (entity instanceof CharacterEntity character
-          && character.getData().name().equals(Standard1v1Battle.KING_TOWER_MIDDLE)
-          && team(character.side()) == team) {
-        return character;
-      }
-    }
-    throw new IllegalStateException("team " + team + " has no middle piece");
-  }
-
   /** The kings' elixir in a match, which collectors and deaths pay into; null outside one. */
   @Getter @Setter private KingElixir kingElixir;
 
@@ -1857,7 +1760,7 @@ public class BattleWorld implements HolderPasses {
    * @param play the play's name
    */
   void championCardPlayed(int side, UnitData champion, int index, String play) {
-    for (int kingSide = 0; kingSide < avatarCount; kingSide++) {
+    for (int kingSide = 0; kingSide < 2; kingSide++) {
       TowerEntity king = kingTower(kingSide);
       if (king != null) {
         king.championCardPlayed(side, champion, index, play);
@@ -2026,7 +1929,6 @@ public class BattleWorld implements HolderPasses {
     int aimX = homing ? sourceTarget.getView().getX() : source.getAimX();
     int aimY = homing ? sourceTarget.getView().getY() : source.getAimY();
     ProjectileEntity projectile = new ProjectileEntity(this, data, source.side());
-    refuseInTeamBattle(action + " thrown mirrored across the width");
     projectile.castMirrored(source, tileMap.width() * TileMap.CELL_UNITS - aimX, aimY);
     holder.add(projectile);
     registrationPass(projectile);
@@ -2113,10 +2015,8 @@ public class BattleWorld implements HolderPasses {
     int stepRing = count > 1 ? 360 / (count - 1) : 0;
     int r90 = radius * 90 / 100;
     int r90sq = r90 * r90;
-    // A team battle's spell sets out from its team's middle piece, beside the king.
-    GridEntity origin = teamBattle() ? teamMiddle(team(side)).getView() : king.getView();
-    int kx = origin.getX();
-    int ky = origin.getY();
+    int kx = king.getView().getX();
+    int ky = king.getView().getY();
     int height = 3 * king.getData().collisionRadius();
     int base = 0;
     ProjectileEntity first = null;

@@ -15,7 +15,6 @@ import java.util.function.Consumer;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.crforge.core.fidelity.Fidelity;
@@ -67,13 +66,7 @@ public class SelectionChain implements MultiTargetLookup.Queries, TargetingQueri
   private final int arenaHeightCells;
 
   private final ValidatorQueries validatorQueries;
-
-  /**
-   * The game mode's answers to the default selection: the standard 1v1 mode's until a team battle
-   * gives the chain its own, with the seed's partner king as the alternate seed.
-   */
-  @NonNull @Setter private DefaultSelectionQueries defaultSelectionQueries;
-
+  private final DefaultSelectionQueries defaultSelectionQueries;
   private final DefaultTargetSelection.Rules defaultSelectionRules;
 
   private final Map<GridEntity, TargetView> views = new IdentityHashMap<>();
