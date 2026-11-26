@@ -929,6 +929,8 @@ The migration gate, `python/tests/test_v4_gate.py`, holds it so at every decisio
 
 `crforge_env.adapters` holds adapters any model may use, each derived from fields its seat is shown, as the seat's player works them out. Each reads seat and public fields only, so `hidden` is false and `require_fair` accepts it, and each is vectorised over the environments. `observe(fields, seat)` gives the outputs of one seat.
 
+The per row adapters `attack_cooldown` and `enemy_hit_points` work out their values on the rows each seat is shown and fill the rest of the table with -1 and False, and `attack_cooldown` finds each target among the living rows by one sorted search. Both seats a call, at 128 environments and 6 threads, they take about 0.8 ms and 0.35 ms beside a Ladder step of about 2.5 ms (median of 200 steps; load average 7 to 11, a training run beside it, so indicative); worked over every row of the table, they took about 12 ms and 0.9 ms.
+
 **`ElixirLead`** (`elixir_lead`, registry 1.0, stateless) reads `own.elixir` and `enemy.elixir`. Its output `lead`, int32 per environment, is the seat's elixir less the enemy's elixir as the seat counts it ([The enemy's elixir as a player counts it](#the-enemys-elixir-as-a-player-counts-it)), in ten-thousandths of an elixir. It never reads the enemy's own count.
 
 **`EnemyCycle`** (`enemy_cycle`, registry 1.0, stateless) is the enemy's card cycle as the seat's player tracks it from the plays the screen shows. It reads `enemy.plays.kind`, `enemy.plays.card` and `enemy.seen.card`, and nothing of the enemy's own hand, queue or deck.
