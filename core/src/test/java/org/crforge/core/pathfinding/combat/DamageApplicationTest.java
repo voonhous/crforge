@@ -40,56 +40,6 @@ class DamageApplicationTest {
   }
 
   @Test
-  @DisplayName(
-      "a target whose hit points are pooled keeps its own dedupe list while the pool takes the"
-          + " subtraction, an ordinary hit, a typed hit and damage over time alike")
-  void aPooledTargetKeepsItsOwnDedupeList() {
-    HitPoints pool = new HitPoints(1000);
-    DamageQueries pooled =
-        new DamageQueries() {
-          @Override
-          public HitPoints subtracted(HitPoints own) {
-            return pool;
-          }
-        };
-
-    DamageResult hit = DamageApplication.damage(hitPoints, 100, 7, 0, 1, pooled);
-    DamageResult again = DamageApplication.damage(hitPoints, 100, 7, 0, 1, pooled);
-    DamageResult typed = DamageApplication.typedHit(hitPoints, 50, 8, 0, 1, pooled);
-    DamageResult overTime = DamageApplication.overTime(hitPoints, 25, pooled);
-
-    assertThat(hit).isEqualTo(new DamageResult(true, 100, false));
-    assertThat(again)
-        .as("the id is listed on the target's own list")
-        .isEqualTo(DamageResult.NOTHING);
-    assertThat(typed.applied()).isEqualTo(50);
-    assertThat(overTime.applied()).isEqualTo(25);
-    assertThat(hitPoints.dedupeIds()).containsExactly(7, 8);
-    assertThat(pool.dedupeIds()).isEmpty();
-    assertThat(hitPoints.getHitPoints()).isEqualTo(1000);
-    assertThat(pool.getHitPoints()).isEqualTo(825);
-  }
-
-  @Test
-  @DisplayName("a hit that takes a pool to zero reports the death of the pool")
-  void aPoolsFallIsTheHitsDeath() {
-    HitPoints pool = new HitPoints(100);
-    DamageQueries pooled =
-        new DamageQueries() {
-          @Override
-          public HitPoints subtracted(HitPoints own) {
-            return pool;
-          }
-        };
-
-    DamageResult result = DamageApplication.damage(hitPoints, 150, 0, 0, 1, pooled);
-
-    assertThat(result).isEqualTo(new DamageResult(true, 100, true));
-    assertThat(pool.getHitPoints()).isZero();
-    assertThat(hitPoints.getHitPoints()).isEqualTo(1000);
-  }
-
-  @Test
   @DisplayName("a killing hit leaves zero, reports only what was left and says the target died")
   void aKillingHitClampsToZero() {
     damage(900);

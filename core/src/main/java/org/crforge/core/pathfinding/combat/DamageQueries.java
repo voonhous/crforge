@@ -149,16 +149,4 @@ public interface DamageQueries {
   default int battleTick() {
     return 0;
   }
-
-  /**
-   * The hit points the subtraction lowers, given the target's own, which the bookkeeping's dedupe
-   * list is kept on whatever this answers: another entity's for a target whose hit points are
-   * pooled with that entity's, as the king of side 2 or 3 of a team battle has its partner's
-   * king's. Supplied as the target's own.
-   *
-   * @param own the target's own hit points
-   */
-  default HitPoints subtracted(HitPoints own) {
-    return own;
-  }
 }

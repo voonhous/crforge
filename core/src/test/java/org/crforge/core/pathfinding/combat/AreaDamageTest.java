@@ -7,7 +7,6 @@
 package org.crforge.core.pathfinding.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -148,70 +147,6 @@ class AreaDamageTest {
                     queries)
                 .victims())
         .isEmpty();
-  }
-
-  /** Two halves of a team's king of side 1 at one point, and queries naming each the other. */
-  private final TargetView half = tower("half", 1, 0, 0, true);
-
-  private final TargetView holder = tower("holder", 1, 0, 0, true);
-
-  private final AreaDamage.Queries partnered =
-      new AreaDamage.Queries() {
-        @Override
-        public DamageResult damage(TargetView victim, int damage, int hitId) {
-          return queries.damage(victim, damage, hitId);
-        }
-
-        @Override
-        public int chainPartnerId(TargetView victim) {
-          return victim == half
-              ? holder.id()
-              : victim == holder ? half.id() : AreaDamage.NO_PARTNER;
-        }
-      };
-
-  private List<TargetView> chainArea(AreaDamage.Chain chain, TargetView... entities) {
-    half.getEntity().setId(5000004);
-    holder.getEntity().setId(5000000);
-    return AreaDamage.damage(
-            owner,
-            List.of(entities),
-            area(1500, 0, false, false),
-            chain,
-            ValidatorQueries.standard1v1(),
-            partnered)
-        .victims();
-  }
-
-  @Test
-  @DisplayName(
-      "a chain's area lists the partner of a struck king as the battle names it, and passes over"
-          + " that partner in the same area as the one-per-area tower rule would")
-  void aChainListsTheStruckKingsPartner() {
-    List<Integer> hit = new ArrayList<>();
-    AreaDamage.Chain chain = new AreaDamage.Chain(0, 0, 0, hit);
-
-    assertThat(chainArea(chain, half, holder)).containsExactly(half);
-    assertThat(hit).containsExactly(5000004, 5000000);
-    assertThat(chain.partnerIds()).as("the tower rule agreed: listed by its own").isEmpty();
-    // A later area of the chain over the partner alone passes it over.
-    assertThat(chainArea(chain, holder)).isEmpty();
-    assertThat(dealt).containsOnlyKeys("half");
-  }
-
-  @Test
-  @DisplayName(
-      "a later area of a chain that would take a king listed only as a struck king's partner is"
-          + " refused")
-  void aPartnerListedOnlyIsRefusedWhereItDecides() {
-    List<Integer> hit = new ArrayList<>();
-    AreaDamage.Chain chain = new AreaDamage.Chain(0, 0, 0, hit);
-
-    assertThat(chainArea(chain, half)).containsExactly(half);
-    assertThat(chain.partnerIds()).containsExactly(5000000);
-    assertThatThrownBy(() -> chainArea(chain, holder))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("listed only as the partner's king");
   }
 
   @Test

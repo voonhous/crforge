@@ -57,10 +57,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " gate in the death damage, which passes by a hidden victim only and leaves the rest"
             + " to the damage drain's refusals. The"
             + " second circle and the id list of a chain of projectiles are held by card_Arrows,"
-            + " arrows_s0_tower and spell_arrows_into_push. The partner's king a team battle lists"
-            + " beside a struck king is held where the one-per-area tower rule agrees by the team"
-            + " battle reference battle tvt2_arrows_kings, and refused where it alone keeps an area"
-            + " from a king. Not"
+            + " arrows_s0_tower and spell_arrows_into_push, not the partner of a 2v2 tower. Not"
             + " modelled: the area objects of their own kind, the heal of the owner's side, the"
             + " push's floor and visuals, and the death presentation. The push is held by the"
             + " death damage of golem_death_pushes_minipekka_pekka.")
@@ -160,34 +157,11 @@ public final class AreaDamage {
    * @param y the second circle's centre along the length
    * @param radius its radius; 0 for none
    * @param hitIds the ids the chain has hit, which this area adds to
-   * @param partnerIds the ids of {@code hitIds} that only the partner rule listed (see {@link
-   *     Queries#chainPartnerId(TargetView)}), which no area of the chain has reached itself
    */
-  public record Chain(int x, int y, int radius, List<Integer> hitIds, List<Integer> partnerIds) {
-
-    /** A chain whose battle names no partners. */
-    public Chain(int x, int y, int radius, List<Integer> hitIds) {
-      this(x, y, radius, hitIds, new ArrayList<>());
-    }
-  }
-
-  /** What {@link Queries#chainPartnerId(TargetView)} answers for a victim without a partner. */
-  public static final int NO_PARTNER = -1;
+  public record Chain(int x, int y, int radius, List<Integer> hitIds) {}
 
   /** What the area asks of the battle about a victim. */
   public interface Queries {
-
-    /**
-     * The id a chain lists beside a victim's own as the area takes it: in a team battle whose
-     * kings' hit points are pooled, the id of a king's partner's king, the other half of its team's
-     * king, so that no later area of the chain hits that half; {@link #NO_PARTNER} for anything
-     * else and in a battle of one player a side.
-     *
-     * @param victim the victim just listed
-     */
-    default int chainPartnerId(TargetView victim) {
-      return NO_PARTNER;
-    }
 
     /** Whether the victim may not be damaged at all right now. */
     default boolean untouchable(TargetView victim) {
@@ -243,8 +217,7 @@ public final class AreaDamage {
   /**
    * Damages the area of one projectile of a chain: as an ordinary area, with the chain's circle as
    * a second circle and its id list, which an entity in both circles is checked against and then
-   * added to, with the partner the battle names for it (see {@link
-   * Queries#chainPartnerId(TargetView)}), before the one-per-area tower rule.
+   * added to, before the one-per-area tower rule.
    *
    * @param chain what the chain shares, or null for an ordinary area
    */
@@ -293,17 +266,9 @@ public final class AreaDamage {
           continue;
         }
         if (chain.hitIds().contains(entity.id())) {
-          refusePartnerPass(chain, entity, towerSlotTaken);
           continue;
         }
         chain.hitIds().add(entity.id());
-        // A struck king's partner's king is listed after it, when not listed already, before the
-        // one-per-area tower rule: the chain passes that half over from now on.
-        int partner = queries.chainPartnerId(entity);
-        if (partner != NO_PARTNER && !chain.hitIds().contains(partner)) {
-          chain.hitIds().add(partner);
-          chain.partnerIds().add(partner);
-        }
       }
       // One area takes at most one of the entities that fill a side's tower slot.
       if (entity.towerFlag() && towerSlotTaken) {
@@ -340,29 +305,5 @@ public final class AreaDamage {
       }
     }
     return new Outcome(inCircle, validated, victims, damaged, pushed);
-  }
-
-  /**
-   * An area of a chain passes over an entity it finds listed. When only the partner rule listed it,
-   * the area reaches that half of a team's king itself for the first time: without the rule it
-   * would list it now and take it unless the one-per-area tower rule passed it over. Where the rule
-   * changes nothing - a tower-slot entity already taken by this area - the half counts as listed by
-   * its own from now on; where it keeps the area from taking the half, it is refused: the one
-   * recorded team battle of a chain over a team's king, tvt2_arrows_kings, reaches the partner's
-   * king in the area that takes the king, so it holds the listing only where the tower rule agrees.
-   */
-  private static void refusePartnerPass(Chain chain, TargetView entity, boolean towerSlotTaken) {
-    Integer id = entity.id();
-    if (!chain.partnerIds().contains(id)) {
-      return;
-    }
-    if (!(entity.towerFlag() && towerSlotTaken)) {
-      throw new UnsupportedOperationException(
-          "a chain of projectiles passing over "
-              + entity.name()
-              + ", listed only as the partner's king of a king it struck, which it would otherwise"
-              + " take, is not modelled");
-    }
-    chain.partnerIds().remove(id);
   }
 }

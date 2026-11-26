@@ -19,7 +19,6 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.replay.ReplayScenario;
-import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.Standard1v1Battle;
@@ -262,150 +261,15 @@ class TeamMatchTest {
 
   @Test
   @DisplayName(
-      "a hit on a king of side 2 or 3 lowers its partner's king's hit points, the team's pool,"
-          + " while its own stay at their maximum and its dedupe list is its own")
-  void aHitOnAHalfLowersThePool() {
+      "the battle refuses damage to a king of side 2 or 3, whose hit points are its partner's")
+  void damageToAHalfIsRefused() {
     Standard1v1Battle battle = teamMatch();
     battle.getBattle().step();
-    TowerEntity holder = battle.getWorld().kingTower(1);
     TowerEntity half = battle.getWorld().kingTower(3);
-    int pool = holder.getHitPoints().getHitPoints();
 
-    half.takeDamage(100, 7, 0, 1);
-    half.takeDamage(100, 7, 0, 1);
-    assertThat(holder.getHitPoints().getHitPoints())
-        .as("the second hit of the id is refused by the half's own list")
-        .isEqualTo(pool - 100);
-    assertThat(half.getHitPoints().getHitPoints()).isEqualTo(half.getHitPoints().getMaximum());
-    assertThat(half.getHitPoints().dedupeIds()).containsExactly(7);
-
-    holder.takeDamage(100, 7, 0, 1);
-    assertThat(holder.getHitPoints().getHitPoints())
-        .as("the holder lists the id on its own list")
-        .isEqualTo(pool - 200);
-    assertThat(holder.getTargetView().getHitPoints()).isEqualTo(pool - 200);
-  }
-
-  @Test
-  @DisplayName(
-      "the pool's fall through either half takes both kings, the half's own hit points to 0, and"
-          + " gives the other team the battle; a second hit in that step is refused")
-  void thePoolFallsWithBothKings() {
-    for (int struck : new int[] {0, 2}) {
-      Standard1v1Battle battle = teamMatch();
-      battle.getBattle().step();
-      BattleWorld world = battle.getWorld();
-      TowerEntity holder = world.kingTower(0);
-      TowerEntity half = world.kingTower(2);
-      TowerEntity target = world.kingTower(struck);
-
-      world
-          .getHits()
-          .dealDamage(target.getTargetView(), holder.getHitPoints().getHitPoints(), 0, 1);
-
-      assertThat(holder.getHitPoints().getHitPoints()).isZero();
-      assertThat(half.getHitPoints().getHitPoints()).isZero();
-      assertThatThrownBy(() -> half.takeDamage(1, 0, 0, 1))
-          .isInstanceOf(UnsupportedOperationException.class)
-          .hasMessageContaining("has fallen in the step");
-      battle.getBattle().step();
-      assertThat(battle.getMatch().isEnded()).isTrue();
-      assertThat(battle.getMatch().getWinner()).as("struck side " + struck).isEqualTo(1);
-    }
-  }
-
-  /** How many steps an area effect of these tests runs for: one hit at least, its buff still on. */
-  private static final int STEPS = 30;
-
-  /** A team's middle piece. */
-  private static WorldEntity middle(Standard1v1Battle battle, int team) {
-    return battle.getWorld().getHolder().entities().stream()
-        .filter(
-            e ->
-                e instanceof WorldEntity w
-                    && w.getData().name().equals(Standard1v1Battle.KING_TOWER_MIDDLE)
-                    && w.side() == team)
-        .map(WorldEntity.class::cast)
-        .findFirst()
-        .orElseThrow();
-  }
-
-  /** What an area effect of side 1 over side 0's king takes off it in a battle of two players. */
-  private static int oneASideLoss(String row) {
-    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL);
-    TowerEntity king = battle.getWorld().kingTower(0);
-    battle
-        .getWorld()
-        .createAreaEffect(row, king.x(), king.y(), 1, king.getPackedLevel(), null, "test", null);
-    for (int step = 0; step < STEPS; step++) {
-      battle.getBattle().step();
-    }
-    int loss = king.getHitPoints().getMaximum() - king.getHitPoints().getHitPoints();
-    assertThat(loss).as(row + " hits the king").isPositive();
-    return loss;
-  }
-
-  /**
-   * Casts an area effect of side 1 on side 0's king, whose circle reaches the side 2 king too, and
-   * steps the battle {@value #STEPS} times.
-   */
-  private static Standard1v1Battle castOnTheHolder(String row) {
-    Standard1v1Battle battle = teamMatch();
-    battle.getBattle().step();
-    TowerEntity holder = battle.getWorld().kingTower(0);
-    TowerEntity half = battle.getWorld().kingTower(2);
-    AreaEffectData data = GameData.records().areaEffect(row);
-    assertThat(Math.abs(holder.x() - half.x()))
-        .as("the circle reaches both halves")
-        .isLessThan(data.radius() + half.getData().collisionRadius());
-    battle
-        .getWorld()
-        .createAreaEffect(
-            row, holder.x(), holder.y(), 1, holder.getPackedLevel(), null, "test", null);
-    for (int step = 0; step < STEPS; step++) {
-      battle.getBattle().step();
-    }
-    return battle;
-  }
-
-  @Test
-  @DisplayName(
-      "an area effect hits one half of a team's king, lists the other as reached, and carries a"
-          + " buff without damage over time to it and to the team's middle piece")
-  void anAreaEffectCarriesItsBuffToThePartner() {
-    String row = "Freeze";
-    String buff = GameData.records().areaEffect(row).buff();
-    assertThat(GameData.records().buff(buff).damagePerSecond()).isZero();
-    Standard1v1Battle battle = castOnTheHolder(row);
-    TowerEntity holder = battle.getWorld().kingTower(0);
-    TowerEntity half = battle.getWorld().kingTower(2);
-
-    assertThat(holder.getHitPoints().getMaximum() - holder.getHitPoints().getHitPoints())
-        .as("the pool takes the hit once")
-        .isEqualTo(oneASideLoss(row));
-    assertThat(half.getHitPoints().getHitPoints()).isEqualTo(half.getHitPoints().getMaximum());
-    assertThat(holder.getBuffs().carries(buff)).isTrue();
-    assertThat(half.getBuffs().carries(buff)).isTrue();
-    assertThat(middle(battle, 0).getBuffs().carries(buff)).isTrue();
-  }
-
-  @Test
-  @DisplayName(
-      "a buff with damage over time stays on the half of a team's king the area effect hits, the"
-          + " team's middle piece carrying it too")
-  void aDamagingBuffStaysOnTheHalfItHits() {
-    String row = "Poison";
-    String buff = GameData.records().areaEffect(row).buff();
-    assertThat(GameData.records().buff(buff).damagePerSecond()).isPositive();
-    Standard1v1Battle battle = castOnTheHolder(row);
-    TowerEntity holder = battle.getWorld().kingTower(0);
-    TowerEntity half = battle.getWorld().kingTower(2);
-
-    assertThat(holder.getHitPoints().getMaximum() - holder.getHitPoints().getHitPoints())
-        .isEqualTo(oneASideLoss(row));
-    assertThat(holder.getBuffs().carries(buff)).isTrue();
-    assertThat(half.getBuffs().carries(buff)).isFalse();
-    assertThat(middle(battle, 0).getBuffs().carries(buff)).isTrue();
+    assertThatThrownBy(() -> half.takeDamage(1, 0, 0, 1))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("the king of side 3 in a team battle");
   }
 
   @Test

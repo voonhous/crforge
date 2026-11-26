@@ -1195,64 +1195,6 @@ public final class HitQueue {
   }
 
   /**
-   * The entity a flying body's travelling hit on an entity strikes, as the game swaps it before
-   * anything else of the hit: the entity itself, but in a team battle whose kings are pooled a king
-   * of side 2 or 3 gives way to the pool's holder, its partner's king, whose id is the one looked
-   * up and listed, and on which the hit is queued. The team battle reference battle
-   * tvt2_warp_elitearcher_s2 holds it only where it agrees with striking the half as it is, the
-   * pool losing the damage either way, so the swap is refused where it would differ: a row with a
-   * target buff (whose after-damage buff the game gives the holder), a projectile of a group or a
-   * volley (whose dedupe id and doomed list would be the holder's), and a contact the swap alone
-   * passes over - a half found listed through the other half, or a holder found listed through its
-   * half.
-   *
-   * @param projectile the flying body
-   * @param entity the entity it covers
-   * @return the entity struck
-   */
-  private WorldEntity travellingHitTarget(ProjectileEntity projectile, WorldEntity entity) {
-    if (!world.kingsPooled() || !entity.getData().king()) {
-      return entity;
-    }
-    WorldEntity holder = world.poolHolder(entity);
-    List<Integer> listed = projectile.getHitIds();
-    List<Integer> swapped = projectile.getSwappedKingIds();
-    if (holder == entity) {
-      TowerEntity half = world.partnerKing(entity);
-      if (half != null && listed.contains(entity.getId()) && swapped.contains(half.getId())) {
-        throw refusedSwap(projectile, entity, "found listed through its partner's king");
-      }
-      return entity;
-    }
-    ProjectileData data = projectile.getData();
-    if (data.targetBuff() != null) {
-      throw refusedSwap(projectile, entity, "with the target buff " + data.targetBuff());
-    }
-    if (projectile.getGroupId() != 0 || projectile.getGroup() != null) {
-      throw refusedSwap(projectile, entity, "of a group of projectiles");
-    }
-    if (listed.contains(holder.getId()) && !swapped.contains(entity.getId())) {
-      throw refusedSwap(projectile, entity, "found listed through its partner's king");
-    }
-    if (!swapped.contains(entity.getId())) {
-      swapped.add(entity.getId());
-    }
-    return holder;
-  }
-
-  private static UnsupportedOperationException refusedSwap(
-      ProjectileEntity projectile, WorldEntity entity, String what) {
-    return new UnsupportedOperationException(
-        "the travelling hit of "
-            + projectile.getData().name()
-            + " on "
-            + entity.name()
-            + ", a king of a team battle whose partner's king holds the pool, "
-            + what
-            + ", is not modelled");
-  }
-
-  /**
    * A flying body's hit on one entity it covers, as the translated hit runs it. Held by the
    * reference battles card_Log, spell_log_into_push, card_BarbLog and spell_barblog_into_push: the
    * damage at the level, the id list, and no push from a hit that kills; held by no run: the own
@@ -1284,8 +1226,7 @@ public final class HitQueue {
    * projectile that stops at collisions is finished by a hit that landed on an entity with hit
    * points left, and the pass ends; held by the Hunter's pellets in the reference battle
    * card_Hunter. Refused: a body whose row has an OnHitTargetAction, which the game runs on each
-   * object the body hits. In a team battle a hit on a king of side 2 or 3 strikes its partner's
-   * king, the pool's holder, in its place (see {@link #travellingHitTarget}).
+   * object the body hits.
    *
    * @return true when the hit finished the projectile
    */
@@ -1304,8 +1245,6 @@ public final class HitQueue {
     if (data.onlyEnemies() && (entity.side() & 1) == (projectile.side() & 1)) {
       return false;
     }
-    // A king of side 2 or 3 of a team battle is struck through the pool's holder.
-    entity = travellingHitTarget(projectile, entity);
     int id = entity.getId();
     if (projectile.getHitIds().contains(id)) {
       return false;
