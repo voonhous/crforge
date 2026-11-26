@@ -281,18 +281,32 @@ public final class BattleRecords {
   }
 
   /**
-   * A game mode's start cooldown in milliseconds: how long from the battle's start a card play is
-   * refused. The game mode row's BattleStartCooldown, or, where the row leaves it empty, the global
-   * LOGIC_BATTLE_START_COOLDOWN. The game picks another global, LOGIC_BATTLE_START_COOLDOWN_2V2,
-   * for a 2v2 battle, which the battle core does not play.
+   * A game mode's start cooldown in milliseconds in a battle of one player a side: how long from
+   * the battle's start a card play is refused ({@link #battleStartCooldownMs(String, boolean)}).
    *
    * @param gameMode the game mode row's name
    */
   public int battleStartCooldownMs(String gameMode) {
+    return battleStartCooldownMs(gameMode, false);
+  }
+
+  /**
+   * A game mode's start cooldown in milliseconds: how long from the battle's start a card play is
+   * refused. The game mode row's BattleStartCooldown, or, where the row leaves it empty, a global:
+   * LOGIC_BATTLE_START_COOLDOWN_2V2 in a team battle, LOGIC_BATTLE_START_COOLDOWN in any other.
+   *
+   * @param gameMode the game mode row's name
+   * @param teamBattle whether the battle is a team battle, of four players two a team
+   */
+  public int battleStartCooldownMs(String gameMode, boolean teamBattle) {
     GameTable modes = tables.table(GAME_MODES);
     checkArgument(modes.has(gameMode), () -> "the game tables have no game mode " + gameMode);
     int own = modes.row(gameMode).intValue("BattleStartCooldown");
-    return own != 0 ? own : globalNumber("LOGIC_BATTLE_START_COOLDOWN");
+    if (own != 0) {
+      return own;
+    }
+    return globalNumber(
+        teamBattle ? "LOGIC_BATTLE_START_COOLDOWN_2V2" : "LOGIC_BATTLE_START_COOLDOWN");
   }
 
   /**

@@ -12,6 +12,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
@@ -20,6 +23,7 @@ import org.crforge.core.battle.expression.BattleFunctions;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
+import org.crforge.core.battle.replay.ReplayScenario;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.BeforeAll;
@@ -559,5 +563,74 @@ class BattleExpressionEnvironmentTest {
         .isEqualTo(target.getHitPoints().getMaximum());
     knight.setActive(CharacterEntity.TARGETING_SLOT, false);
     assertThat(evaluate("target_max_hp(10)", environment)).as("targeting off").isZero();
+  }
+
+  /** A team battle on the team map, played as the team match, every player of one deck. */
+  private static Standard1v1Battle teamMatch() {
+    List<Standard1v1Battle.Towers> towers = new ArrayList<>();
+    String group =
+        GameData.tables()
+            .table("support_cards")
+            .row(ReplayScenario.TEAM_TOWER_SELECTION)
+            .string(ReplayScenario.TEAM_SPAWN_GROUP);
+    for (int side = 0; side < BattleWorld.TEAM_BATTLE; side++) {
+      towers.add(
+          new Standard1v1Battle.Towers(
+              group, Standard1v1Battle.DEFAULT_LEVEL, Standard1v1Battle.DEFAULT_LEVEL));
+    }
+    Standard1v1Battle battle =
+        new Standard1v1Battle(
+            GameData.tables(),
+            towers,
+            true,
+            GameData.tables().tileMap(ReplayScenario.TEAM_TILE_MAP));
+    List<String> deck =
+        List.of(
+            "Knight",
+            "Archer",
+            "Giant",
+            "MiniPekka",
+            "Musketeer",
+            "Valkyrie",
+            "Barbarians",
+            "Minions");
+    battle.startTeamMatch(
+        Collections.nCopies(4, deck),
+        new int[4],
+        Collections.nCopies(4, new int[deck.size()]),
+        Collections.nCopies(4, List.of()));
+    return battle;
+  }
+
+  @Test
+  @DisplayName(
+      "the co-op functions read the partner: its king below its maximum, its princess tower gone")
+  void theCoopFunctionsReadThePartner() {
+    Standard1v1Battle battle = teamMatch();
+    Battle steps = battle.getBattle();
+    steps.step();
+    BattleWorld world = battle.getWorld();
+    TowerEntity half = world.kingTower(2);
+    BattleExpressionEnvironment environment = new BattleExpressionEnvironment(half, world);
+    Expression king = ExpressionCompiler.compile("coop_king_tower_damaged()", environment);
+    Expression tower = ExpressionCompiler.compile("coop_tower_destroyed()", environment);
+    Expression own = ExpressionCompiler.compile("tower_destroyed()", environment);
+
+    assertThat(ExpressionEvaluator.evaluate(king, environment)).isZero();
+    world.kingTower(0).takeDamage(1, 0, 0, 1);
+    assertThat(ExpressionEvaluator.evaluate(king, environment)).isEqualTo(1);
+
+    WorldEntity princess =
+        steps.getHolder().entities().stream()
+            .map(WorldEntity.class::cast)
+            .filter(e -> e.getData().summonerTower() && e.side() == 0)
+            .findFirst()
+            .orElseThrow();
+    world.getHits().kill(princess, null);
+    steps.step();
+    steps.step();
+    assertThat(ExpressionEvaluator.evaluate(tower, environment)).isEqualTo(1);
+    // Its own princess tower stands: one player's tower gone is not the other's.
+    assertThat(ExpressionEvaluator.evaluate(own, environment)).isZero();
   }
 }

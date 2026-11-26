@@ -89,6 +89,38 @@ public final class Scenarios {
   }
 
   /**
+   * The {@link #knight()} battle as a team battle: under the Ladder's team row, on the team
+   * location of the arena it names, with avatars 2 and 3 of the same deck (account low words one
+   * above their side) and player data for all four; its one command is still side 0's Knight.
+   *
+   * @param tables the game tables, which give the team row's and the team location's data ids
+   */
+  public static ObjectNode teamKnight(GameTables tables) {
+    ObjectNode scenario = knight();
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put(
+        "gamemode", dataId(tables, ReplayScenario.GAME_MODES, ReplayScenario.LADDER_TEAM_VS_TEAM));
+    String location =
+        tables.table(ScenarioWriter.ARENAS).row(arena(tables)).string("TeamVsTeamLocation");
+    battle.put("location", dataId(tables, "locations", location));
+    for (int side = 2; side < 4; side++) {
+      battle.set("deck" + side, battle.path("deck0").deepCopy());
+      ObjectNode avatar = battle.path("avatar0").deepCopy();
+      avatar.put("accountID.lo", side + 1);
+      avatar.put("name", "Offline " + side);
+      battle.set("avatar" + side, avatar);
+      ((ArrayNode) battle.path("hbd")).add(battle.path("hbd").get(0).deepCopy());
+    }
+    return scenario;
+  }
+
+  /** The data id of a table's row: the table's id times a million plus the row's index. */
+  private static int dataId(GameTables tables, String table, String row) {
+    return Integer.parseInt(tables.table(table).id()) * ReplayScenario.IDS_PER_TABLE
+        + tables.table(table).row(row).index();
+  }
+
+  /**
    * The {@link #knight()} battle as a case generated for a data version of client 16.402.17 writes
    * it: the replay shape every version shares ({@link ScenarioShape#GENERATED}) with the play's
    * command type, {@link #PLAY}. It has no request lists, no header switches of that version and no
