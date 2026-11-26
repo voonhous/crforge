@@ -7,6 +7,7 @@
 package org.crforge.core.pathfinding.move;
 
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.Route;
 
 /**
@@ -259,9 +260,12 @@ public interface MovementQueries {
     return 0;
   }
 
-  /** 1 when the entity belongs to side 0, which decides how coincident units separate. */
-  default int ownerSideZero() {
-    return ownerSide() == 0 ? 1 : 0;
+  /**
+   * 1 when the entity belongs to team 0, sides 0 and 2, which decides how coincident units
+   * separate. In a battle of two the team is the side.
+   */
+  default int ownerTeamZero() {
+    return CellGrid.team(ownerSide()) == 0 ? 1 : 0;
   }
 
   // ---------------------------------------------------------------------------------------------

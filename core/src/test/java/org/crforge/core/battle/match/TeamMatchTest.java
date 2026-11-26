@@ -17,14 +17,20 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleRandom;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.replay.ReplayScenario;
+import org.crforge.core.battle.spawn.SpawnCharacters;
+import org.crforge.core.battle.spawn.SpawnRow;
+import org.crforge.core.battle.unit.ActionOwnerEntity;
 import org.crforge.core.battle.unit.AreaEffectData;
+import org.crforge.core.battle.unit.AreaEffectEntity;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.battle.unit.WorldEntity;
+import org.crforge.core.battle.unit.WorldObserver;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.junit.jupiter.api.DisplayName;
@@ -432,5 +438,101 @@ class TeamMatchTest {
     // The tiebreaker's clearing took the middle pieces away.
     assertThat(entities(battle))
         .noneMatch(e -> e.getData().name().equals(Standard1v1Battle.KING_TOWER_MIDDLE));
+  }
+
+  /** The Knight a spawn to a location makes for an owner of the side at the arena's middle. */
+  private static CharacterEntity spawnToLocation(int side, SpawnRow row) {
+    Standard1v1Battle battle = teamBattle();
+    ActionOwnerEntity owner = battle.addActionOwner("Owner", side, 9000, 12000, LEVEL);
+    battle.scheduleAction(0, owner, new SpawnCharacters(ActionRow.named("spawn"), row));
+    battle.getBattle().step();
+    return battle.getBattle().getHolder().entities().stream()
+        .filter(e -> e instanceof CharacterEntity c && c.getData().name().equals("Knight"))
+        .map(CharacterEntity.class::cast)
+        .findFirst()
+        .orElseThrow();
+  }
+
+  @Test
+  @DisplayName(
+      "a side 2 owner's spawn to a location offset by its side flag lands as side 0's, the flag"
+          + " its team's in a team battle")
+  void aSideTwoSpawnToARelativeLocationLandsAsSideZero() {
+    SpawnRow relativeX =
+        SpawnRow.builder().toLocation(true).spawnData(GameData.unit("Knight")).relativeX(1).build();
+    SpawnRow relativeY = relativeX.toBuilder().relativeX(0).relativeY(1).build();
+    SpawnRow mirroredY = relativeX.toBuilder().relativeX(0).mirroredY(1).build();
+
+    for (SpawnRow row : List.of(relativeX, relativeY, mirroredY)) {
+      CharacterEntity sideTwo = spawnToLocation(2, row);
+      CharacterEntity sideZero = spawnToLocation(0, row);
+      CharacterEntity sideOne = spawnToLocation(1, row);
+      assertThat(sideTwo.getView().getX()).isEqualTo(sideZero.getView().getX());
+      assertThat(sideTwo.getView().getY()).isEqualTo(sideZero.getView().getY());
+      // The side as written would have sent it the way of side 1.
+      assertThat(
+              sideTwo.getView().getX() != sideOne.getView().getX()
+                  || sideTwo.getView().getY() != sideOne.getView().getY())
+          .isTrue();
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "a side 3 owner's spawn to a relative location, and a side 2 owner's to an absolute one,"
+          + " land as side 1's and side 0's, both rules agreeing")
+  void spawnsToALocationBothRulesAgreeOnAreKept() {
+    SpawnRow relativeX =
+        SpawnRow.builder().toLocation(true).spawnData(GameData.unit("Knight")).relativeX(1).build();
+    SpawnRow absoluteX = relativeX.toBuilder().relativeX(0).absoluteX(4).build();
+
+    // Each Knight walks its first step at once; it stands where its team's other side's does.
+    assertThat(spawnToLocation(3, relativeX).getView().getX())
+        .isEqualTo(spawnToLocation(1, relativeX).getView().getX());
+    assertThat(spawnToLocation(2, absoluteX).getView().getX())
+        .isEqualTo(spawnToLocation(0, absoluteX).getView().getX());
+  }
+
+  /** The bombs, x and y, an evolved Cannon of the side drops as it stands at the point. */
+  private static List<String> barrage(int side, int x, int y) {
+    Standard1v1Battle battle = teamBattle();
+    List<String> bombs = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void barrageStepped(
+                  int tick, CharacterEntity owner, String action, List<AreaEffectEntity> made) {
+                for (AreaEffectEntity a : made) {
+                  bombs.add(a.getX() + " " + a.getY());
+                }
+              }
+            });
+    battle.deploy(0, GameData.records().unit("Cannon_EV1"), LEVEL, side, x, y, "C");
+    battle.getBattle().step();
+    return bombs;
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Cannon's bombs fall ahead of it by its team in a team battle: up the length for"
+          + " side 2, as for side 0, and down it for side 3, as for side 1")
+  void aBarrageFallsAheadByTeam() {
+    List<Integer> across = Shipped.numbers("Cannon_EV1_barrage", "BombAbsoluteHorizontalOffsets");
+    List<Integer> ahead = Shipped.numbers("Cannon_EV1_barrage", "BombVerticalOffsets");
+    int low = 10000;
+    int high = teamMap().heightUnits() - low;
+    List<String> up = new ArrayList<>();
+    List<String> down = new ArrayList<>();
+    for (int i = 0; i < ahead.size(); i++) {
+      up.add((across.get(i) * 500) + " " + (low + ahead.get(i) * 500));
+      down.add((across.get(i) * 500) + " " + (high - ahead.get(i) * 500));
+    }
+
+    assertThat(barrage(2, 3500, low)).containsExactlyElementsOf(up);
+    assertThat(barrage(0, 14500, low)).containsExactlyElementsOf(up);
+    assertThat(barrage(3, 14500, high)).containsExactlyElementsOf(down);
+    assertThat(barrage(1, 3500, high)).containsExactlyElementsOf(down);
   }
 }

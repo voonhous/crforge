@@ -53,7 +53,7 @@ import org.crforge.core.pathfinding.grid.TileMap;
  *
  * <p>The towers are created side by side and, within a side, king first and then the two princess
  * towers from the low end of the arena's width to the high end. That order is their id order, and
- * it is load bearing: the building overlay folds ids into its per-side hash in that order, and a
+ * it is load bearing: the building overlay folds ids into its per-team hash in that order, and a
  * character ranks its default targets in it.
  */
 @Fidelity(

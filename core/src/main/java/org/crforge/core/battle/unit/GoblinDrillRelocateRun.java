@@ -45,7 +45,9 @@ import org.crforge.core.pathfinding.combat.HitPoints;
             + " enemy princess towers still listed, a destroyed one gone). Held by"
             + " evo_goblindrill_vs_musketeer; the backward walk, the start on no ring point and the"
             + " ring of a destroyed tower by recorded battles not yet in the reference set."
-            + " Refused: the quarter rule and no enemy king.")
+            + " Refused: the quarter rule, no enemy king, and in a team battle a point on the"
+            + " ring of the enemy side's partner's princess tower, whose list by team is not"
+            + " traced.")
 final class GoblinDrillRelocateRun extends ActionInstance {
 
   /** Game units in one half tile, the ring's unit. */
@@ -120,9 +122,43 @@ final class GoblinDrillRelocateRun extends ActionInstance {
     y = view.getY() / HALF_TILE;
     int enemy = 1 - (unit.side() & 1);
     index = ringIndex(unit.world().princessTowers(enemy), x, y);
+    refuseOnAPartnersRing(enemy);
     // On no ring point: no direction is chosen, and each hide comes up on the point itself.
     if (index >= 0) {
       backward = backward(unit.world().kingTower(enemy));
+    }
+  }
+
+  /**
+   * Refuses, in a team battle, a point whose ring index the enemy team's princess towers would give
+   * otherwise than the enemy side's alone: a point on the ring of the enemy side's partner's
+   * princess tower. The list is read by side; whether the game reads the team's is not traced.
+   *
+   * @param enemy the enemy side, 0 or 1
+   */
+  private void refuseOnAPartnersRing(int enemy) {
+    BattleWorld world = unit.world();
+    if (!world.teamBattle()) {
+      return;
+    }
+    List<TowerEntity> team = world.teamPrincessTowers(enemy);
+    if (ringIndex(team, x, y) == index) {
+      return;
+    }
+    for (TowerEntity tower : team) {
+      if (tower.side() != enemy && ringIndex(List.of(tower), x, y) >= 0) {
+        throw new UnsupportedOperationException(
+            getAction().name()
+                + " of "
+                + unit.name()
+                + " standing on the ring of "
+                + tower.name()
+                + ", a princess tower of side "
+                + tower.side()
+                + " in a team battle, which the enemy side's list of side "
+                + enemy
+                + " leaves out and its team's would take in, is not modelled");
+      }
     }
   }
 

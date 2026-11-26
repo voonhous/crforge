@@ -26,10 +26,12 @@ import org.crforge.core.fidelity.FidelityStatus;
  * {@code previous} is the one from the tick before; route preparation compares them to decide
  * whether a cached route is still good. {@link #swap()} performs the end-of-tick rotation.
  *
- * <p>{@code hash} and {@code changed} hold one entry per side (0 and 1): the hash summarises which
- * occluding entities of that side were stamped, and the changed flag says whether that hash differs
- * from the previous build's. {@code changeFlags} is the copy of {@code changed} taken once the
- * build is finished, which is what readers during the tick see.
+ * <p>{@code hash} and {@code changed} hold one entry per team (0 and 1, see {@link #team(int)}):
+ * the hash summarises which occluding entities of that team were stamped, and the changed flag says
+ * whether that hash differs from the previous build's. In a battle of two players a team is its one
+ * side; in a team battle sides 0 and 2 share team 0's entry and sides 1 and 3 team 1's. {@code
+ * changeFlags} is the copy of {@code changed} taken once the build is finished, which is what
+ * readers during the tick see.
  *
  * <p>Overlay arrays are row-major with one entry per cell, so a cell's slot is {@code row * width +
  * column}, the same id space routes use.
@@ -37,13 +39,20 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: the overlay's two buffers and their rotation, the per-side hash and change"
-            + " flags. Not checked against a recorded battle: a tick on which the set of"
-            + " occluders actually changes.")
+        "Settled: the overlay's two buffers and their rotation, the per-team hash and change"
+            + " flags; a team battle's side 3 unit replanning on the step after its side's"
+            + " building fell is held by the recorded team battles. Not checked against a"
+            + " recorded battle of two: a tick on which the set of occluders actually changes.")
 public final class CellGrid {
 
-  /** One entry per side of the match. */
+  /** One entry per team of the match that carries a hash: teams 0 and 1. */
   private static final int SIDES = 2;
+
+  /** Side of a neutral object, which forms a team of its own. */
+  private static final int NEUTRAL_SIDE = 100;
+
+  /** Team of a neutral object: outside the two that carry a hash. */
+  private static final int NEUTRAL_TEAM = 2;
 
   /** The arena's static cell map. */
   @Getter private final TileMap tileMap;
@@ -66,10 +75,10 @@ public final class CellGrid {
   /** Overlay cost of each cell for the previous tick, row-major. */
   @Getter @Setter private int[] previous;
 
-  /** Per-side summary of the occluding entities stamped by the last build. */
+  /** Per-team summary of the occluding entities stamped by the last build. */
   @Getter @Setter private int[] hash;
 
-  /** Per-side flag saying whether that side's hash differs from the previous build's. */
+  /** Per-team flag saying whether that team's hash differs from the previous build's. */
   @Getter @Setter private int[] changed;
 
   /** Copy of {@link #changed} taken once the build finished, read during the rest of the tick. */
@@ -93,6 +102,19 @@ public final class CellGrid {
    * at a time.
    */
   @Getter private final RouteSearch.Buffers searchBuffers = new RouteSearch.Buffers();
+
+  /**
+   * The team whose hash an occluder of a side folds into and whose change flag a unit of the side
+   * reads: the side's remainder by two, so sides 0 and 2 are team 0 and sides 1 and 3 team 1, and
+   * the neutral side is team 2. The remainder keeps the side's sign, as the game's does, so a
+   * negative side reads a negative team; neither a negative team nor team 2 carries a hash.
+   *
+   * @param side the object's side
+   * @return its team
+   */
+  public static int team(int side) {
+    return side == NEUTRAL_SIDE ? NEUTRAL_TEAM : side % 2;
+  }
 
   /**
    * Creates a grid over the given cell map with zeroed overlays, no footprints and an inactive

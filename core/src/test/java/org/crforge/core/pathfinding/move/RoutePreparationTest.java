@@ -140,6 +140,50 @@ class RoutePreparationTest {
   }
 
   @Test
+  void aTeamBattlesSideThreeUnitReplansOnItsTeamsChangedOverlay() {
+    // Side 3 is team 1: a changed team 1 overlay replans its route, a changed team 0 one does not.
+    queries.ownerSide = 3;
+    component.setRoute(Route.of(LEFT_GOAL_NODE, 47 * WIDTH + 7));
+    grid.getChangeFlags()[0] = 1;
+    queries.searchResult = Route.of(LEFT_GOAL_NODE, 46 * WIDTH + 7);
+
+    prepare();
+
+    assertThat(queries.searches).isEmpty();
+
+    grid.getChangeFlags()[0] = 0;
+    grid.getChangeFlags()[1] = 1;
+
+    prepare();
+
+    assertThat(queries.searches).hasSize(1);
+  }
+
+  @Test
+  void aTeamBattlesSideTwoUnitReplansOnTeamZerosChangedOverlay() {
+    queries.ownerSide = 2;
+    component.setRoute(Route.of(LEFT_GOAL_NODE, 47 * WIDTH + 7));
+    grid.getChangeFlags()[0] = 1;
+    queries.searchResult = Route.of(LEFT_GOAL_NODE, 46 * WIDTH + 7);
+
+    prepare();
+
+    assertThat(queries.searches).hasSize(1);
+  }
+
+  @Test
+  void aNeutralUnitReadsNoChangedOverlay() {
+    queries.ownerSide = 100;
+    component.setRoute(Route.of(LEFT_GOAL_NODE, 47 * WIDTH + 7));
+    grid.getChangeFlags()[0] = 1;
+    grid.getChangeFlags()[1] = 1;
+
+    prepare();
+
+    assertThat(queries.searches).isEmpty();
+  }
+
+  @Test
   void anOldRouteCrossingANewlyOccupiedCellIsReplaced() {
     component.setRoute(Route.of(LEFT_GOAL_NODE, 47 * WIDTH + 7));
     grid.getChangeFlags()[0] = 1;

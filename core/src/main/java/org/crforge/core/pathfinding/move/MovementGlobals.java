@@ -16,7 +16,7 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     while walking, which the waypoint selector applies
  * @param samePathEpsilon tolerance, in cells, below which a freshly searched route is treated as
  *     the one already held; this build reads it only as a threshold of one
- * @param friendlyOnlyOcclusions whether route preparation consults only its own side's overlay
+ * @param friendlyOnlyOcclusions whether route preparation consults only its own team's overlay
  *     change flag rather than both
  * @param spawnPathfindReachedRadiusFromSpeed whether the arrival threshold of the two pathfind
  *     states is the matching pathfind speed rather than the fixed 1000 units

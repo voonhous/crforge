@@ -23,9 +23,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: every bomb in the first update, x from the absolute offset, y"
             + " from the owner's y and the vertical offset negated for side 1, and the finish;"
-            + " held by the reference battle evo_cannon_vs_giant. Refused: a bomb off the arena,"
-            + " which ends the barrage, and a mode of four players, whose team rule is not"
-            + " modelled.")
+            + " held by the reference battle evo_cannon_vs_giant. A team battle negates it by"
+            + " team, held by tvt2_barrage_cannon_s2 and _s3. Refused: a bomb off the arena,"
+            + " which ends the barrage.")
 final class CannonBarrageRun extends ActionInstance {
 
   /** Game units per offset tile. */
@@ -52,8 +52,11 @@ final class CannonBarrageRun extends ActionInstance {
     for (int i = 0; i < row.getAreaEffects().size(); i++) {
       int x = row.getAbsoluteHorizontalOffsets().get(i) * TILE;
       int v = row.getVerticalOffsets().get(i) * TILE;
-      // Forward for either side: along the length for side 0, against it for side 1.
-      if (unit.side() != 0) {
+      // Forward for either side: along the length for side 0, against it for side 1. A team
+      // battle mirrors by the side's lowest bit, its team: side 2 as side 0, side 3 as side 1.
+      int side = unit.side();
+      int mirror = unit.world().teamBattle() ? side & 1 : side;
+      if (mirror != 0) {
         v = -v;
       }
       int y = v + unit.getView().getY();
