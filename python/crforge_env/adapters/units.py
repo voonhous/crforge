@@ -138,6 +138,24 @@ def _facts(adapter: Adapter, registry: Registry, names: tuple[str, ...]) -> dict
     return {n: registry.rows[n] for n in names}
 
 
+def _shown_rows(fields: FieldView, seat: int) -> tuple[np.ndarray, np.ndarray]:
+    """The (environment, row) indices of the rows seat ``seat`` is shown, in row order: a
+    stateless per row adapter works on these alone, a few of the table's rows."""
+    return np.nonzero(fields[VISIBLE][:, seat])
+
+
+def _is_unit(kind: np.ndarray, units: tuple[int, int]) -> np.ndarray:
+    """Whether each kind is a character's or a tower's (``_unit_kinds``)."""
+    return (kind == units[0]) | (kind == units[1])
+
+
+def _scatter(shape: tuple[int, int], at: tuple[np.ndarray, np.ndarray], values, fill, dtype):
+    """A ``shape`` array of ``fill`` with ``values`` at the indices ``at``."""
+    out = np.full(shape, fill, dtype=dtype)
+    out[at] = values
+    return out
+
+
 def _per_row(fact: np.ndarray, row: np.ndarray, known: np.ndarray) -> np.ndarray:
     """A row fact for each entity row: its value at ``row`` where ``known``, else 0."""
     at = np.where(known, row, 0)
@@ -148,6 +166,9 @@ def _ceil(a: np.ndarray, b: np.ndarray | int) -> np.ndarray:
     """ceil(a / b) of integers, b above 0."""
     return -(-a // b)
 
+
+LOW_32 = (1 << 32) - 1
+"""The low 32 bits of a 64-bit key: an id's place in it, the environment's above."""
 
 TICK_MS = 50
 """The battle time of one tick."""
@@ -232,36 +253,48 @@ class AttackCooldown(Adapter):
         dash, special = (1 << _code(registry, "attack_traits", t) for t in ("dash", "special"))
         self._inexact_traits = dash | special
 
-    def _target_alive(self, fields: FieldView, seat: int, flags: np.ndarray) -> np.ndarray:
-        """Per row, whether its target is an entity the seat is shown alive (by the seat's ids)."""
-        target = fields["entity.target"][:, seat]
-        ids = fields[ID][:, seat]
-        living = (fields[VISIBLE][:, seat] != 0) & ((flags & self._bit["alive"]) != 0)
-        found = np.zeros(target.shape, dtype=bool)
-        env, row = np.nonzero(target >= 0)
-        if env.size:
-            match = (ids[env] == target[env, row][:, None]) & living[env]
-            found[env, row] = match.any(axis=1)
-        return found
+    def _target_alive(
+        self, fields: FieldView, seat: int, shown: tuple[np.ndarray, np.ndarray], flags: np.ndarray
+    ) -> np.ndarray:
+        """Per shown row, whether its target is an entity the seat is shown alive (by the seat's
+        ids): its environment and target id among the environments and ids of the shown rows
+        alive, as one 64-bit key each."""
+        env = shown[0].astype(np.int64) << 32
+        ids = fields[ID][:, seat][shown].astype(np.int64) & LOW_32
+        target = fields["entity.target"][:, seat][shown]
+        living = (flags & self._bit["alive"]) != 0
+        aimed = env | (target.astype(np.int64) & LOW_32)
+        keys = np.sort((env | ids)[living])
+        if keys.size == 0:
+            return np.zeros(target.shape, dtype=bool)
+        found = keys[np.minimum(np.searchsorted(keys, aimed), keys.size - 1)] == aimed
+        return (target >= 0) & found
 
     def observe(self, fields: FieldView, seat: int) -> dict[str, np.ndarray]:
-        """``ms``, ``known`` and ``exact``, each ``(count, entity_capacity)``, for seat ``seat``."""
+        """``ms``, ``known`` and ``exact``, each ``(count, entity_capacity)``, for seat ``seat``.
+
+        Worked out on the rows the seat is shown alone; every other row is -1 and False."""
         check_seat(seat)
         f = self._facts
-        row = fields["entity.row"][:, seat].astype(np.int64)
-        flags = fields["entity.flags"][:, seat].astype(np.int64)
-        unit = np.isin(fields["entity.kind"][:, seat], self._units)
-        shown = (fields[VISIBLE][:, seat] != 0) & unit & (row >= 0) & (row < len(f["hit_speed_ms"]))
+        at = _shown_rows(fields, seat)
+
+        def col(name: str) -> np.ndarray:
+            return fields[name][:, seat][at]
+
+        row = col("entity.row").astype(np.int64)
+        flags = col("entity.flags").astype(np.int64)
+        unit = _is_unit(col("entity.kind"), self._units)
+        shown = unit & (row >= 0) & (row < len(f["hit_speed_ms"]))
         h = _per_row(f["hit_speed_ms"], row, shown)
         t = _per_row(f["load_time_ms"], row, shown)
         b = _per_row(f["attack_step_ms"], row, shown)
         d = _per_row(f["attack_start_delay_ms"], row, shown)
         traits = _per_row(f["attack_traits"], row, shown)
-        a = fields["entity.attack_ms"][:, seat].astype(np.int64)
-        load = fields["entity.load_ms"][:, seat].astype(np.int64)
-        p = fields["entity.hit_speed_percent"][:, seat].astype(np.int64)
+        a = col("entity.attack_ms").astype(np.int64)
+        load = col("entity.load_ms").astype(np.int64)
+        p = col("entity.hit_speed_percent").astype(np.int64)
         step = b * p // 100
-        attacking = fields["entity.state"][:, seat] == self._attacking
+        attacking = col("entity.state") == self._attacking
         charged = (flags & self._bit["charged"]) != 0
         known = shown & (h > 0) & (b >= 0) & (step >= 1)
         # A start delay of -1 (the steps differ) leaves an attack that starts from 0 uncounted.
@@ -276,16 +309,21 @@ class AttackCooldown(Adapter):
         # The flag charged stays set on the tick of the charge's hit, the timer at H by then.
         from_zero = np.where(charged, 1, np.where(t <= h, short, long))
         n = np.where(a > 0, under_way, from_zero)
-        ms = np.where(known, TICK_MS * n, NONE).astype(np.int32)
+        ms = np.where(known, TICK_MS * n, NONE)
         bit = self._bit
         inexact = (traits & self._inexact_traits) != 0
-        inexact |= fields["entity.deploy_ms"][:, seat] > 0
+        inexact |= col("entity.deploy_ms") > 0
         inexact |= (flags & (bit["underground"] | bit["no_attack"])) != 0
         inexact |= ((flags & bit["king"]) != 0) & ((flags & bit["awake"]) == 0)
         inexact |= (flags & bit["alive"]) == 0
-        inexact |= attacking & ~self._target_alive(fields, seat, flags)
-        inexact |= (fields["own.result"][:, seat] != self._running)[:, None]
-        return {"ms": ms, "known": known, "exact": known & ~inexact}
+        inexact |= attacking & ~self._target_alive(fields, seat, at, flags)
+        inexact |= fields["own.result"][:, seat][at[0]] != self._running
+        shape = fields[VISIBLE][:, seat].shape
+        return {
+            "ms": _scatter(shape, at, ms, NONE, np.int32),
+            "known": _scatter(shape, at, known, False, np.bool_),
+            "exact": _scatter(shape, at, known & ~inexact, False, np.bool_),
+        }
 
 
 class EnemyHitPoints(Adapter):
@@ -336,19 +374,30 @@ class EnemyHitPoints(Adapter):
         self._underground = 1 << _code(registry, "entity", "underground")
 
     def observe(self, fields: FieldView, seat: int) -> dict[str, np.ndarray]:
-        """``hp``, ``known`` and ``fill``, each ``(count, entity_capacity)``, for seat ``seat``."""
+        """``hp``, ``known`` and ``fill``, each ``(count, entity_capacity)``, for seat ``seat``.
+
+        Worked out on the rows the seat is shown alone; every other row is -1 and False."""
         check_seat(seat)
-        row = fields["entity.row"][:, seat].astype(np.int64)
-        hp = fields["entity.hp"][:, seat]
-        top = fields["entity.max_hp"][:, seat]
-        unit = np.isin(fields["entity.kind"][:, seat], self._units)
-        unit &= fields[VISIBLE][:, seat] != 0
+        at = _shown_rows(fields, seat)
+
+        def col(name: str) -> np.ndarray:
+            return fields[name][:, seat][at]
+
+        row = col("entity.row").astype(np.int64)
+        hp = col("entity.hp")
+        top = col("entity.max_hp")
+        unit = _is_unit(col("entity.kind"), self._units)
         listed = (row >= 0) & (row < len(self._rule))
         rule = _per_row(self._rule, row, listed)
-        underground = (fields["entity.flags"][:, seat] & self._underground) != 0
+        underground = (col("entity.flags") & self._underground) != 0
         unhurt = unit & (hp < 0) & listed & (rule == self._damaged) & ~underground & (top > 0)
         known = unit & ((hp >= 0) | unhurt)
-        value = np.where(known, np.where(unhurt, top, hp), NONE).astype(np.int32)
+        value = np.where(known, np.where(unhurt, top, hp), NONE)
         with np.errstate(divide="ignore", invalid="ignore"):
             fill = np.where(known & (top > 0), value / np.maximum(top, 1), -1.0)
-        return {"hp": value, "known": known, "fill": fill.astype(np.float32)}
+        shape = fields[VISIBLE][:, seat].shape
+        return {
+            "hp": _scatter(shape, at, value, NONE, np.int32),
+            "known": _scatter(shape, at, known, False, np.bool_),
+            "fill": _scatter(shape, at, fill.astype(np.float32), -1.0, np.float32),
+        }
