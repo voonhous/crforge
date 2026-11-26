@@ -30,11 +30,20 @@ public final class ReplayBattle {
    * scenario's order, each play and ability command named {@code cmd<index>} after its index in the
    * scenario, with the tick it was given on and the tick it runs on as the scenario states them.
    *
+   * <p>The match is chosen by the plan's players: two, one a side, play the Ladder match. A team
+   * battle's plan of four players is refused, as {@link ReplayScenario#translate} refuses its
+   * scenario: no battle mode models a team match.
+   *
    * @param tables the game tables
    * @param plan the translated scenario
    * @return the battle, not yet stepped
+   * @throws UnsupportedScenarioException for a team battle's plan
    */
   public static Standard1v1Battle build(GameTables tables, ScenarioPlan plan) {
+    if (plan.players() != ScenarioPlan.ONE_A_SIDE) {
+      throw new UnsupportedScenarioException(
+          ReplayScenario.NO_TEAM_MATCH, "a plan of " + plan.players() + " players");
+    }
     // The towers stand at their levels raised by the card level minimum, the king at its own.
     Standard1v1Battle battle = new Standard1v1Battle(tables, plan.raisedTowers(), true);
     battle.getWorld().seed(plan.seed());
