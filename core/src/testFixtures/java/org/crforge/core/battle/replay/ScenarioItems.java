@@ -183,9 +183,12 @@ public final class ScenarioItems {
     throw new IllegalArgumentException("no row of id " + id);
   }
 
-  /** The side whose avatar holds an account's low word. */
+  /**
+   * The side whose avatar holds an account's low word, among every avatar the battle header holds:
+   * two in a battle of one player a side, four in a team battle.
+   */
   private static int side(ObjectNode scenario, int accountLo) {
-    for (int side = 0; side < 2; side++) {
+    for (int side = 0; scenario.path("battle").has("avatar" + side); side++) {
       if (scenario.path("battle").path("avatar" + side).path("accountID.lo").asInt() == accountLo) {
         return side;
       }
