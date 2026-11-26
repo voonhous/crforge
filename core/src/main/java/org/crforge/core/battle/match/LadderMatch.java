@@ -11,7 +11,6 @@ import static org.crforge.core.util.ValidationUtils.checkState;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import lombok.Getter;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
@@ -103,17 +102,16 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * towers are equal, the holder is cleaned up, and the next step ends the match by crowns: equal
  * lowest towers end it a draw.
  *
- * <p>A team battle's match, under the Ladder's team row ({@value #TEAM_GAME_MODE}) or the friendly
- * team row ({@value #FRIENDLY_TEAM_GAME_MODE}), is the same match between four players, sides 0 and
- * 2 against sides 1 and 3: each player has its own king, elixir, deck, hand and plays, set up side
- * 0 to side 3, under its row's own timeline and, where the row leaves its own empty, the team
- * battle's start cooldown. What the match counts is a team's: the crowns a team takes from the
- * other, 3 when either of its kings has fallen, else one for each princess tower of either of its
- * players lost; the winner is a team. The tiebreaker's lowest tower is the lowest over the four
- * sides of the side's team's princess towers and its own king, its drain takes both teams' princess
- * towers and the kings of side 0 and side 1 only, and it ends a draw when all four sides' lowest
- * are equal. A fallen king's circle is asked of the kings of side 0 and side 1 and kills its team's
- * entities.
+ * <p>A team battle's match, under the Ladder's team row ({@value #TEAM_GAME_MODE}), is the same
+ * match between four players, sides 0 and 2 against sides 1 and 3: each player has its own king,
+ * elixir, deck, hand and plays, set up side 0 to side 3, under the team row's timeline and, where
+ * the row leaves its own empty, the team battle's start cooldown. What the match counts is a
+ * team's: the crowns a team takes from the other, 3 when either of its kings has fallen, else one
+ * for each princess tower of either of its players lost; the winner is a team. The tiebreaker's
+ * lowest tower is the lowest over the four sides of the side's team's princess towers and its own
+ * king, its drain takes both teams' princess towers and the kings of side 0 and side 1 only, and it
+ * ends a draw when all four sides' lowest are equal. A fallen king's circle is asked of the kings
+ * of side 0 and side 1 and kills its team's entities.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -219,15 +217,6 @@ public final class LadderMatch implements BattleMode {
 
   /** The game mode row of the Ladder's team battles, two players a team. */
   public static final String TEAM_GAME_MODE = "Ladder_TeamVsTeam";
-
-  /**
-   * The game mode row of the friendly team battles, two players a team: the Ladder's team row under
-   * the Friendly card level adjustment and its own timeline.
-   */
-  public static final String FRIENDLY_TEAM_GAME_MODE = "TeamVsTeam";
-
-  /** The game mode rows a team battle's match is played under, each its own row. */
-  public static final Set<String> TEAM_GAME_MODES = Set.of(TEAM_GAME_MODE, FRIENDLY_TEAM_GAME_MODE);
 
   /** The bound of the battle-source draw that seeds a deck's shuffle. */
   private static final int SHUFFLE_BOUND = 0x0fffffff;
@@ -395,10 +384,10 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
-   * Sets a match up under a game mode row: {@value #GAME_MODE} between two players, or one of
-   * {@link #TEAM_GAME_MODES} between the four players of a team battle, as many as the world's
-   * avatar count. The match reads its timeline and its start cooldown from the row; everything else
-   * of a player, its elixir, its deck, its hand and its plays, is its own, as in a battle of two.
+   * Sets a match up under a game mode row: {@value #GAME_MODE} between two players, or {@value
+   * #TEAM_GAME_MODE} between the four players of a team battle, as many as the world's avatar
+   * count. The match reads its timeline and its start cooldown from the row; everything else of a
+   * player, its elixir, its deck, its hand and its plays, is its own, as in a battle of two.
    *
    * @param world the battle's world, whose random source the shuffles draw from
    * @param records the battle's records
@@ -418,7 +407,7 @@ public final class LadderMatch implements BattleMode {
       List<List<String>> excludedEvolutions) {
     int players = world.getAvatarCount();
     checkArgument(
-        world.teamBattle() ? TEAM_GAME_MODES.contains(gameMode) : gameMode.equals(GAME_MODE),
+        gameMode.equals(world.teamBattle() ? TEAM_GAME_MODE : GAME_MODE),
         () ->
             "the game mode "
                 + gameMode
@@ -427,7 +416,7 @@ public final class LadderMatch implements BattleMode {
                 + " players: a match is played under "
                 + GAME_MODE
                 + " between two, "
-                + String.join(" or ", TEAM_GAME_MODES.stream().sorted().toList())
+                + TEAM_GAME_MODE
                 + " between four");
     checkArgument(
         decks.size() == players && playerWords.length == players,

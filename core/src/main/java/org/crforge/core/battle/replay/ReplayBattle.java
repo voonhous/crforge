@@ -31,8 +31,8 @@ public final class ReplayBattle {
    * scenario, with the tick it was given on and the tick it runs on as the scenario states them.
    *
    * <p>The match is chosen by the plan's players: two, one a side, play the Ladder match on the
-   * standard arena; four, two a team, play the team match under the plan's team row on the map of
-   * the battle's location, each player with its own deck, word and slot flags, side 0 to side 3.
+   * standard arena; four, two a team, play the Ladder's team match on the map of the battle's
+   * location, each player with its own deck, word and slot flags, side 0 to side 3.
    *
    * @param tables the game tables
    * @param plan the translated scenario
@@ -59,8 +59,7 @@ public final class ReplayBattle {
       for (int side = 0; side < words.length; side++) {
         words[side] = plan.accounts().get(side)[1];
       }
-      battle.startTeamMatch(
-          plan.gameMode(), plan.decks(), words, plan.slotFlags(), plan.excludedEvolutions());
+      battle.startTeamMatch(plan.decks(), words, plan.slotFlags(), plan.excludedEvolutions());
     } else {
       battle.startLadderMatch(
           plan.decks().get(0),

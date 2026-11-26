@@ -11,7 +11,6 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 
 /**
@@ -53,9 +52,6 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * @param tileMap the map the battle is played on: its location's tile data, by the path the
  *     location names it ({@code TileDataFileName}), the standard arena's for a battle of one player
  *     a side
- * @param gameMode the game mode row the match is played under: {@value LadderMatch#GAME_MODE} for a
- *     battle of one player a side, whichever row its replay names that is played as it; a team
- *     battle's own row, one of {@link LadderMatch#TEAM_GAME_MODES}
  */
 public record ScenarioPlan(
     int seed,
@@ -70,8 +66,7 @@ public record ScenarioPlan(
     List<Ability> abilities,
     int cardLevelMinimum,
     List<List<String>> excludedEvolutions,
-    String tileMap,
-    String gameMode) {
+    String tileMap) {
 
   /** Two sides that list no excluded evolution, as a replay that does not read them gives. */
   public static final List<List<String>> NONE_EXCLUDED = List.of(List.of(), List.of());
@@ -90,8 +85,6 @@ public record ScenarioPlan(
    */
   public ScenarioPlan {
     checkArgument(tileMap != null && !tileMap.isEmpty(), "a plan names the map it is played on");
-    checkArgument(
-        gameMode != null && !gameMode.isEmpty(), "a plan names the game mode it is played under");
     int players = decks.size();
     checkArgument(
         players == ONE_A_SIDE || players == TEAM_BATTLE,
@@ -104,8 +97,7 @@ public record ScenarioPlan(
   }
 
   /**
-   * A plan played on the standard arena's map under the Ladder row, as a battle of one player a
-   * side is.
+   * A plan played on the standard arena's map, as a battle of one player a side is.
    *
    * @see ScenarioPlan the components
    */
@@ -135,8 +127,7 @@ public record ScenarioPlan(
         abilities,
         cardLevelMinimum,
         excludedEvolutions,
-        ReplayScenario.STANDARD_TILE_MAP,
-        LadderMatch.GAME_MODE);
+        ReplayScenario.STANDARD_TILE_MAP);
   }
 
   /**
