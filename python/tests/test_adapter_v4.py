@@ -132,6 +132,69 @@ def test_an_out_array_is_cleared_and_filled(adapter, registry):
         adapter.observe_both(view, out=np.zeros((3, 2, 7), dtype=np.int32))
 
 
+def synthetic(registry, adapter, rng, rows=None, count=4):
+    """Random v4 observations and the read view of the fields made from them."""
+    observations = fieldgen.synthetic_observations(LAYOUT, rng, count, rows=rows)
+    block = fieldgen.fields_from_observations(LAYOUT, observations, rng)
+    return observations, registry.view(block, adapter.reads)
+
+
+def test_an_out_array_given_again_is_rewritten_where_it_changed(adapter, registry):
+    # Given back, the array is not cleared first: only the header, the rows listed now and the
+    # rows the last call filled past the counts now are written. Every call must still equal its
+    # observations, with counts falling to 0 and rising to the cap.
+    rng = np.random.default_rng(11)
+    out = np.full((4, 2, v4.SEAT_INTS), -5, dtype=np.int32)
+    other = np.full_like(out, -5)
+    caps = [None, [[0, 0], [3, v4.MAX_ENTITIES]] * 2, [[v4.MAX_ENTITIES, 1], [0, 2]] * 2, None]
+    for rows in caps:
+        observations, view = synthetic(registry, adapter, rng, rows)
+        assert adapter.observe_both(view, out=out) is out
+        np.testing.assert_array_equal(out, observations)
+    # Another array in between is cleared, and the first array given after it is cleared too.
+    out[...] = -5
+    np.testing.assert_array_equal(adapter.observe_both(view, out=other), observations)
+    np.testing.assert_array_equal(adapter.observe_both(view, out=out), observations)
+
+
+def test_an_array_another_adapter_wrote_since_is_cleared(registry):
+    # Two adapters taking turns on one array, or on two views of its memory: each must see that
+    # the other wrote it, or the longer rows the other left would stay.
+    rng = np.random.default_rng(12)
+    a, b = V4Adapter(), V4Adapter()
+    a.bind(registry)
+    b.bind(registry)
+    out = np.zeros((4, 2, v4.SEAT_INTS), dtype=np.int32)
+    for writer, target, rows in [
+        (a, out, 1),
+        (b, out, v4.MAX_ENTITIES),
+        (a, out, 1),
+        (b, out[...], v4.MAX_ENTITIES),
+        (a, out, 2),
+    ]:
+        observations, view = synthetic(registry, writer, rng, rows)
+        writer.observe_both(view, out=target)
+        np.testing.assert_array_equal(out, observations)
+
+
+def test_a_call_that_raises_leaves_the_array_to_be_cleared(adapter, registry, monkeypatch):
+    rng = np.random.default_rng(13)
+    out = np.zeros((4, 2, v4.SEAT_INTS), dtype=np.int32)
+    observations, view = synthetic(registry, adapter, rng, v4.MAX_ENTITIES)
+    adapter.observe_both(view, out=out)
+
+    def halfway(fields, seats, array, filled):
+        array[...] = 7
+        raise RuntimeError("halfway")
+
+    with monkeypatch.context() as m:
+        m.setattr(adapter, "_rebuild", halfway)
+        with pytest.raises(RuntimeError):
+            adapter.observe_both(view, out=out)
+    observations, view = synthetic(registry, adapter, rng, 1)
+    np.testing.assert_array_equal(adapter.observe_both(view, out=out), observations)
+
+
 def test_a_registry_of_another_major_version_is_refused():
     node = dict(NODE, version="2.0")
     with pytest.raises(ValueError):
