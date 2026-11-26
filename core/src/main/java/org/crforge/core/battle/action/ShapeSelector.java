@@ -321,6 +321,13 @@ public final class ShapeSelector extends RowAction {
         return null;
       }
       int side = host.ownerSide();
+      if (side == 2 || side == 3) {
+        // A team battle's sides 2 and 3, which the rule as written runs neither row for.
+        throw new UnsupportedOperationException(
+            "a shape selector's side action on an owner of side "
+                + side
+                + " in a team battle, whose mirror by team is not modelled");
+      }
       boolean pickBelow = host.ownerX() > host.x(pick);
       if (pickBelow) {
         return side == 1

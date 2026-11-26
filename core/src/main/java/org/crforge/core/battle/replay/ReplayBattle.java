@@ -30,22 +30,22 @@ public final class ReplayBattle {
    * scenario's order, each play and ability command named {@code cmd<index>} after its index in the
    * scenario, with the tick it was given on and the tick it runs on as the scenario states them.
    *
-   * <p>The match is chosen by the plan's players: two, one a side, play the Ladder match. A team
-   * battle's plan of four players is refused, as {@link ReplayScenario#translate} refuses its
-   * scenario: no battle mode models a team match.
+   * <p>The match is chosen by the plan's players: two, one a side, play the Ladder match on the
+   * standard arena; four, two a team, play the Ladder's team match on the map of the battle's
+   * location, each player with its own deck, word and slot flags, side 0 to side 3.
    *
    * @param tables the game tables
    * @param plan the translated scenario
    * @return the battle, not yet stepped
-   * @throws UnsupportedScenarioException for a team battle's plan
    */
   public static Standard1v1Battle build(GameTables tables, ScenarioPlan plan) {
-    if (plan.players() != ScenarioPlan.ONE_A_SIDE) {
-      throw new UnsupportedScenarioException(
-          ReplayScenario.NO_TEAM_MATCH, "a plan of " + plan.players() + " players");
-    }
-    // The towers stand at their levels raised by the card level minimum, the king at its own.
-    Standard1v1Battle battle = new Standard1v1Battle(tables, plan.raisedTowers(), true);
+    // The towers stand at their levels raised by the card level minimum, the king at its own, or
+    // in a team battle at its own or its partner's, the higher.
+    Standard1v1Battle battle =
+        plan.teamBattle()
+            ? new Standard1v1Battle(
+                tables, plan.raisedTowers(), true, tables.tileMap(plan.tileMap()))
+            : new Standard1v1Battle(tables, plan.raisedTowers(), true);
     battle.getWorld().seed(plan.seed());
     // Each player's data is handed over before the decks are dealt, in the scenario's order.
     for (int choices : plan.playerDataChoices()) {
@@ -54,14 +54,22 @@ public final class ReplayBattle {
     // A player's word, which joins its deck shuffle's draw, is the low word of its account id. Each
     // deck card comes with its slot flags, and each side with the evolutions its player's data
     // excludes from the battle, which an evolved Mirror's repeat reads.
-    battle.startLadderMatch(
-        plan.decks().get(0),
-        plan.decks().get(1),
-        plan.accounts().get(0)[1],
-        plan.accounts().get(1)[1],
-        plan.slotFlags().get(0),
-        plan.slotFlags().get(1),
-        plan.excludedEvolutions());
+    if (plan.teamBattle()) {
+      int[] words = new int[plan.players()];
+      for (int side = 0; side < words.length; side++) {
+        words[side] = plan.accounts().get(side)[1];
+      }
+      battle.startTeamMatch(plan.decks(), words, plan.slotFlags(), plan.excludedEvolutions());
+    } else {
+      battle.startLadderMatch(
+          plan.decks().get(0),
+          plan.decks().get(1),
+          plan.accounts().get(0)[1],
+          plan.accounts().get(1)[1],
+          plan.slotFlags().get(0),
+          plan.slotFlags().get(1),
+          plan.excludedEvolutions());
+    }
     // The commands are queued in the scenario's order, plays and ability commands alike: within a
     // tick they run in the order they were queued.
     Map<Integer, ScenarioPlan.Play> playsByIndex = new HashMap<>();

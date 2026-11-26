@@ -67,6 +67,32 @@ public record DefaultSelectionQueries(
     return STANDARD_1V1;
   }
 
+  /**
+   * The answers of the Ladder's team battle, of four players two a team: the standard mode's but
+   * for the alternate seed and the registered objects. The seed is the other team's king of side 0
+   * or 1, and the alternate seed its partner's king, the other half of that team's king, which the
+   * selection switches to while both stand, or when the seed has fallen; six registered map
+   * objects, giving an expected candidate count of three.
+   *
+   * @param alternateSeed the partner king of the seed
+   */
+  public static DefaultSelectionQueries teamBattle(TargetView alternateSeed) {
+    return new DefaultSelectionQueries(
+        true,
+        alternateSeed,
+        STANDARD_1V1.suppressTowerSeed(),
+        STANDARD_1V1.alternateGoalMode(),
+        STANDARD_1V1.specialObjectsActive(),
+        STANDARD_1V1.specialObjects(),
+        TEAM_BATTLE_REGISTERED_OBJECTS,
+        STANDARD_1V1.pluginOverride(),
+        STANDARD_1V1.unitSide(),
+        STANDARD_1V1.excludedConfigKey());
+  }
+
+  /** The registered map objects of a team battle. */
+  private static final int TEAM_BATTLE_REGISTERED_OBJECTS = 6;
+
   /** Half the registered object count: how many candidates one side is expected to contribute. */
   public int expectedCandidateCount() {
     return registeredObjectCount / 2;
