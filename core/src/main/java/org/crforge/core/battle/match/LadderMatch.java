@@ -11,7 +11,6 @@ import static org.crforge.core.util.ValidationUtils.checkState;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import lombok.Getter;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
@@ -102,18 +101,6 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * below 200, 20 below 500, 40 below 1000, else 50. When a tower reaches 0, or the two sides' lowest
  * towers are equal, the holder is cleaned up, and the next step ends the match by crowns: equal
  * lowest towers end it a draw.
- *
- * <p>A team battle's match, under the Ladder's team row ({@value #TEAM_GAME_MODE}) or the friendly
- * team row ({@value #FRIENDLY_TEAM_GAME_MODE}), is the same match between four players, sides 0 and
- * 2 against sides 1 and 3: each player has its own king, elixir, deck, hand and plays, set up side
- * 0 to side 3, under its row's own timeline and, where the row leaves its own empty, the team
- * battle's start cooldown. What the match counts is a team's: the crowns a team takes from the
- * other, 3 when either of its kings has fallen, else one for each princess tower of either of its
- * players lost; the winner is a team. The tiebreaker's lowest tower is the lowest over the four
- * sides of the side's team's princess towers and its own king, its drain takes both teams' princess
- * towers and the kings of side 0 and side 1 only, and it ends a draw when all four sides' lowest
- * are equal. A fallen king's circle is asked of the kings of side 0 and side 1 and kills its team's
- * entities.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -165,19 +152,6 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " was played as; by excluded-evolutions-mirror-v1: the evolved Mirror after a"
             + " Knight whose evolved row its side's player data excludes from the battle, as the"
             + " Knight itself, and after one only the other side excludes, as its evolved row."
-            + " By the team battle reference battles tvt_idle, tvt_tower_levels,"
-            + " tvt_start_cooldown, tvt_buildings_s2s3, tvt_fireball_middle, tvt_tiebreak_tower"
-            + " and tvt_walk_side0 to tvt_walk_side3: the team match's setup of four players in"
-            + " side order, each player's elixir, hand and queue, the team row's timeline, the"
-            + " team battle's start cooldown, the team crowns, the tiebreaker's clearing of the"
-            + " middle pieces, its drain of both teams' princess towers and the kings of side 0"
-            + " and side 1, its draw by four equal sides and its end by a fallen tower. By"
-            + " tvt_end_king_half0, tvt_end_king_half2 and tvt_tiebreak_no_princess: the end at"
-            + " the fall of a team's king through either half or the tiebreaker's drain, the"
-            + " other team the winner, and the fallen king's circle from the king of side 0"
-            + " killing either partner's princess tower; by tvt_time_1_0, tvt_time_2_1,"
-            + " tvt_overtime_crown and tvt_princess_both_partners: the end by time and in"
-            + " overtime on the team crowns, both partners' princess towers counted."
             + " Not held by a recorded battle: the Mirror of an evolved"
             + " play; the evolved Mirror's level offset, MIRROR_EVO_LEVEL_OFFSET, which every"
             + " shipped table sets equal to the Mirror's own. Held"
@@ -216,18 +190,6 @@ public final class LadderMatch implements BattleMode {
 
   /** The game mode row the match is played under. */
   public static final String GAME_MODE = "Ladder";
-
-  /** The game mode row of the Ladder's team battles, two players a team. */
-  public static final String TEAM_GAME_MODE = "Ladder_TeamVsTeam";
-
-  /**
-   * The game mode row of the friendly team battles, two players a team: the Ladder's team row under
-   * the Friendly card level adjustment and its own timeline.
-   */
-  public static final String FRIENDLY_TEAM_GAME_MODE = "TeamVsTeam";
-
-  /** The game mode rows a team battle's match is played under, each its own row. */
-  public static final Set<String> TEAM_GAME_MODES = Set.of(TEAM_GAME_MODE, FRIENDLY_TEAM_GAME_MODE);
 
   /** The bound of the battle-source draw that seeds a deck's shuffle. */
   private static final int SHUFFLE_BOUND = 0x0fffffff;
@@ -293,10 +255,7 @@ public final class LadderMatch implements BattleMode {
   private final List<MatchSide> sides = new ArrayList<>();
 
   /** The battle-source draw each side's shuffle was seeded with, before the player's word. */
-  private final int[] shuffleDraws;
-
-  /** Whether the match is a team battle's, four players two a team. */
-  private final boolean teamBattle;
+  private final int[] shuffleDraws = new int[2];
 
   /** How long the battle goes on after its end: the end screen's delay, in milliseconds. */
   private final int endDelayMs;
@@ -326,12 +285,9 @@ public final class LadderMatch implements BattleMode {
   private boolean tiebreakDone;
 
   /** Each side's king tower once {@link #king(int)} has found it. */
-  private final TowerEntity[] kings;
+  private final TowerEntity[] kings = new TowerEntity[2];
 
-  /**
-   * Each team's princess towers once {@link #listedPrincessTowers(int)} has found them: a side's in
-   * a battle of one player a side, both partners' in a team battle.
-   */
+  /** Each side's princess towers once {@link #listedPrincessTowers(int)} has found them. */
   private final TowerEntity[][] listedPrincessTowers = new TowerEntity[2][];
 
   /**
@@ -391,70 +347,21 @@ public final class LadderMatch implements BattleMode {
       int[] playerWords,
       List<int[]> slotFlags,
       List<List<String>> excludedEvolutions) {
-    this(world, records, GAME_MODE, decks, playerWords, slotFlags, excludedEvolutions);
-  }
-
-  /**
-   * Sets a match up under a game mode row: {@value #GAME_MODE} between two players, or one of
-   * {@link #TEAM_GAME_MODES} between the four players of a team battle, as many as the world's
-   * avatar count. The match reads its timeline and its start cooldown from the row; everything else
-   * of a player, its elixir, its deck, its hand and its plays, is its own, as in a battle of two.
-   *
-   * @param world the battle's world, whose random source the shuffles draw from
-   * @param records the battle's records
-   * @param gameMode the game mode row's name
-   * @param decks each side's deck, by card row name, side 0 first
-   * @param playerWords each side's word, added to its shuffle's draw
-   * @param slotFlags each side's slot flags, by deck index
-   * @param excludedEvolutions each side's evolutions excluded from the battle, by row name
-   */
-  public LadderMatch(
-      BattleWorld world,
-      BattleRecords records,
-      String gameMode,
-      List<List<String>> decks,
-      int[] playerWords,
-      List<int[]> slotFlags,
-      List<List<String>> excludedEvolutions) {
-    int players = world.getAvatarCount();
+    checkArgument(decks.size() == 2 && playerWords.length == 2, () -> "a match has two players");
+    checkArgument(slotFlags.size() == 2, () -> "a match has two decks of slot flags");
     checkArgument(
-        world.teamBattle() ? TEAM_GAME_MODES.contains(gameMode) : gameMode.equals(GAME_MODE),
-        () ->
-            "the game mode "
-                + gameMode
-                + " in a battle of "
-                + players
-                + " players: a match is played under "
-                + GAME_MODE
-                + " between two, "
-                + String.join(" or ", TEAM_GAME_MODES.stream().sorted().toList())
-                + " between four");
-    checkArgument(
-        decks.size() == players && playerWords.length == players,
-        () -> "a match has " + players + " players");
-    checkArgument(
-        slotFlags.size() == players, () -> "a match has " + players + " decks of slot flags");
-    checkArgument(
-        excludedEvolutions.size() == players,
-        () ->
-            "a match has "
-                + players
-                + " sides' excluded evolutions, got "
-                + excludedEvolutions.size());
-    this.excludedEvolutions = excludedEvolutions.stream().map(List::copyOf).toList();
+        excludedEvolutions.size() == 2,
+        () -> "a match has two sides' excluded evolutions, got " + excludedEvolutions.size());
+    this.excludedEvolutions =
+        List.of(List.copyOf(excludedEvolutions.get(0)), List.copyOf(excludedEvolutions.get(1)));
     this.world = world;
-    this.teamBattle = world.teamBattle();
-    this.shuffleDraws = new int[players];
-    this.kings = new TowerEntity[players];
-    this.timeline = new Timeline(records.gameModeTimeline(gameMode));
+    this.timeline = new Timeline(records.gameModeTimeline(GAME_MODE));
     this.maxMana = records.globalNumber("MAX_MANA");
     this.mirrorLevelOffset = records.globalNumber(MIRROR_LEVEL_OFFSET);
-    this.startCooldownTicks = records.battleStartCooldownMs(gameMode, teamBattle) / Battle.STEP_MS;
+    this.startCooldownTicks = records.battleStartCooldownMs(GAME_MODE) / Battle.STEP_MS;
     this.endDelayMs = records.endScreenDelayMs();
     this.arenaLength = world.getTileMap().height() * TileMap.CELL_UNITS;
-    // The decks are dealt side by side, side 0 first: in a team battle sides 0, 1, 2 and 3, each
-    // shuffle one draw of the battle's source after the one before.
-    for (int side = 0; side < players; side++) {
+    for (int side = 0; side < 2; side++) {
       List<MatchCard> deck = new ArrayList<>();
       for (String name : decks.get(side)) {
         deck.add(records.matchCard(name));
@@ -798,13 +705,11 @@ public final class LadderMatch implements BattleMode {
    */
   private void drain() {
     int step = drainStep(lowestTower());
-    // Team 0 then team 1: its princess towers, both partners' in a team battle, then the king of
-    // side 0 or side 1; the kings of sides 2 and 3 are never drained.
-    for (int team = 0; team < 2; team++) {
-      for (TowerEntity tower : princessTowers(team)) {
+    for (int side = 0; side < 2; side++) {
+      for (TowerEntity tower : princessTowers(side)) {
         world.getHits().drain(tower, step);
       }
-      world.getHits().drain(king(team), step);
+      world.getHits().drain(king(side), step);
     }
   }
 
@@ -822,48 +727,32 @@ public final class LadderMatch implements BattleMode {
     return lowest < 1000 ? 40 : 50;
   }
 
-  /** The lowest hit points of any tower of every side. */
+  /** The lowest hit points of any tower of both sides. */
   private int lowestTower() {
-    int lowest = Integer.MAX_VALUE;
-    for (int side = 0; side < sides.size(); side++) {
-      lowest = Math.min(lowest, lowestTower(side));
-    }
-    return lowest;
+    return Math.min(lowestTower(0), lowestTower(1));
   }
 
-  /**
-   * The lowest hit points of a side's towers still in the holder: its team's princess towers, both
-   * partners' in a team battle, and the side's own king, by its own hit points.
-   */
+  /** The lowest hit points of a side's towers still in the holder, its king included. */
   private int lowestTower(int side) {
     int lowest = king(side).getHitPoints().getHitPoints();
-    for (TowerEntity tower : princessTowers(BattleWorld.team(side))) {
+    for (TowerEntity tower : princessTowers(side)) {
       lowest = Math.min(lowest, tower.getHitPoints().getHitPoints());
     }
     return lowest;
   }
 
-  /** Whether every side's lowest towers are equal: both sides', or all four in a team battle. */
+  /** Whether both sides' lowest towers are equal. */
   private boolean lowestTied() {
-    int first = lowestTower(0);
-    for (int side = 1; side < sides.size(); side++) {
-      if (lowestTower(side) != first) {
-        return false;
-      }
-    }
-    return true;
+    return lowestTower(0) == lowestTower(1);
   }
 
-  /**
-   * A team's princess towers still in the holder, in placement order: a side's in a battle of one
-   * player a side, both partners' in a team battle.
-   */
-  private List<TowerEntity> princessTowers(int team) {
+  /** A side's princess towers still in the holder, in placement order. */
+  private List<TowerEntity> princessTowers(int side) {
     List<TowerEntity> towers = new ArrayList<>();
     for (BattleEntity entity : world.getHolder().entities()) {
       if (entity instanceof TowerEntity tower
           && tower.getData().summonerTower()
-          && BattleWorld.team(tower.side()) == team) {
+          && tower.side() == side) {
         towers.add(tower);
       }
     }
@@ -879,7 +768,6 @@ public final class LadderMatch implements BattleMode {
   public boolean update(Battle battle) {
     timeline.setCrownsEqual(crowns(0) == crowns(1));
     timeline.advance(battle.getTick());
-    // Only the kings of side 0 and side 1 are asked, a team battle's too.
     for (int side = 0; side < 2; side++) {
       TowerEntity king = king(side);
       if (!HitPoints.alive(king.getHitPoints())) {
@@ -954,7 +842,7 @@ public final class LadderMatch implements BattleMode {
     int y = king.getView().getY();
     for (BattleEntity entity : List.copyOf(world.getHolder().entities())) {
       if (entity instanceof WorldEntity w
-          && BattleWorld.team(w.side()) == BattleWorld.team(king.side())
+          && w.side() == king.side()
           && w.getHitPoints() != null
           && HitPoints.alive(w.getHitPoints())
           && inside(w.getView().getX(), w.getView().getY(), x, y, radius)) {
@@ -994,10 +882,7 @@ public final class LadderMatch implements BattleMode {
     return tiebreakMs;
   }
 
-  /**
-   * The winning side, or -1 for none; 0 until the match ends. In a team battle the winning team: 0
-   * for sides 0 and 2, 1 for sides 1 and 3.
-   */
+  /** The winning side, or -1 for none; 0 until the match ends. */
   public int getWinner() {
     return winner;
   }
@@ -1008,25 +893,20 @@ public final class LadderMatch implements BattleMode {
    * @param king the king tower
    */
   public void kingVisit(TowerEntity king) {
-    sides.get(king.side()).visit(timeline, maxMana);
+    sides.get(king.side() & 1).visit(timeline, maxMana);
   }
 
   /**
    * The crowns a side has taken: 3 when the other side's king is dead, else one for each princess
    * tower the other side has lost, up to 2. A fallen princess tower counts from the cleanup that
-   * removes it from the holder. In a team battle the crowns are a team's, taken from the other
-   * team: 3 when either king of it is dead, else one for each princess tower of both its players
-   * lost, up to 2.
+   * removes it from the holder.
    *
-   * @param side 0 or 1: in a team battle the team, sides 0 and 2 or sides 1 and 3
+   * @param side 0 or 1
    */
   public int crowns(int side) {
     int other = 1 - side;
-    // Either king of the other team down gives 3: in a team battle both partners' kings.
-    for (int king = other; king < sides.size(); king += 2) {
-      if (!kingAlive(king)) {
-        return 3;
-      }
+    if (!kingAlive(other)) {
+      return 3;
     }
     int princessTowers = 0;
     for (TowerEntity tower : listedPrincessTowers(other)) {
@@ -1043,11 +923,11 @@ public final class LadderMatch implements BattleMode {
    * princess tower the holder will ever list is among them; {@link #crowns(int)} asks the holder
    * which are still listed instead of walking every entity, a speed choice only.
    */
-  private TowerEntity[] listedPrincessTowers(int team) {
-    TowerEntity[] towers = listedPrincessTowers[team];
+  private TowerEntity[] listedPrincessTowers(int side) {
+    TowerEntity[] towers = listedPrincessTowers[side];
     if (towers == null) {
-      towers = princessTowers(team).toArray(new TowerEntity[0]);
-      listedPrincessTowers[team] = towers;
+      towers = princessTowers(side).toArray(new TowerEntity[0]);
+      listedPrincessTowers[side] = towers;
     }
     return towers;
   }
@@ -1085,12 +965,8 @@ public final class LadderMatch implements BattleMode {
     if (endTimerMs > 0) {
       return true;
     }
-    // A fallen king decides it: in a team battle the crowns it gives, 3, are over the team
-    // battle's threshold, so any of the four does.
-    for (int side = 0; side < sides.size(); side++) {
-      if (!kingAlive(side)) {
-        return true;
-      }
+    if (!kingAlive(0) || !kingAlive(1)) {
+      return true;
     }
     if (timeline.overtime() && crowns(0) != crowns(1)) {
       return true;

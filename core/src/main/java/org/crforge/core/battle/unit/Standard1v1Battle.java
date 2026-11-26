@@ -43,7 +43,6 @@ import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.grid.TileMap;
 
@@ -53,7 +52,7 @@ import org.crforge.core.pathfinding.grid.TileMap;
  *
  * <p>The towers are created side by side and, within a side, king first and then the two princess
  * towers from the low end of the arena's width to the high end. That order is their id order, and
- * it is load bearing: the building overlay folds ids into its per-team hash in that order, and a
+ * it is load bearing: the building overlay folds ids into its per-side hash in that order, and a
  * character ranks its default targets in it.
  */
 @Fidelity(
@@ -235,114 +234,6 @@ public class Standard1v1Battle {
     }
     // The setup places the towers straight into the live list, so they stand from the first tick.
     battle.getHolder().cleanup();
-  }
-
-  /**
-   * The row of the piece each team's king stands beside in a team battle: a building with no hit
-   * points, which is never a target and takes nothing.
-   */
-  public static final String KING_TOWER_MIDDLE = "KingTowerMiddle";
-
-  /**
-   * The routing cell the team battle's setup places each team's middle piece on, team 0's, before
-   * the mirrors: the middle of the width, the kings' row.
-   */
-  private static final int MIDDLE_X = 18;
-
-  /** The row of the middle piece's routing cell, on the bottom side. */
-  private static final int MIDDLE_Y = 6;
-
-  /**
-   * A team battle on the game's tables, four players two a team, on the map of its location: each
-   * player's towers placed from its own spawn group, the team battle's group of its tower
-   * selection.
-   *
-   * <p>The towers are made player by player, side 0 to side 3, each side's group in its order: the
-   * king row at the side's king level, every other row at the side's level. Each object's routing
-   * cell is the group's mirrored for the side: along the width for sides 0 and 1, so their towers
-   * stand on the other half of the width from their partners', and along the length for the odd
-   * sides, team 1. Then each team's middle piece ({@value #KING_TOWER_MIDDLE}), team 0's then team
-   * 1's, owned by side 0 and side 1, in the middle of the width on the kings' row, mirrored as
-   * their owner's towers are. Every king and princess tower has its hit points raised as a team
-   * battle raises them; the middle pieces have none.
-   *
-   * @param tables the game tables the battle reads its rows from, as a battle of one player a side
-   * @param sides the towers of side 0 to side 3, each naming its team battle spawn group
-   * @param towersAttack false to keep every tower passive for the whole battle
-   * @param tileMap the map of the battle's location
-   */
-  public Standard1v1Battle(
-      GameTables tables, List<Towers> sides, boolean towersAttack, TileMap tileMap) {
-    checkArgument(
-        sides.size() == BattleWorld.TEAM_BATTLE,
-        () -> "a team battle of four sides' towers, got " + sides.size());
-    this.towers = List.copyOf(sides);
-    // Which of a cell's bits above the modelled ones the game reads is not settled: a team battle
-    // refuses a route or a placement that reads such a cell.
-    this.world = new BattleWorld(tileMap.refusingUnmodelledCells());
-    world.setAvatarCount(BattleWorld.TEAM_BATTLE);
-    world.load(tables);
-    this.battle = new Battle(world.getHolder(), BattleMode.ENDLESS);
-    for (int side = 0; side < BattleWorld.TEAM_BATTLE; side++) {
-      Towers towers = sides.get(side);
-      List<SpawnObject> objects = spawnObjects(tables.table(SPAWN_GROUPS).row(towers.spawnGroup()));
-      for (int i = 0; i < objects.size(); i++) {
-        SpawnObject object = objects.get(i);
-        UnitData data = world.getRecords().unit(object.data());
-        int level = data.king() ? towers.kingLevel() : towers.level();
-        TowerEntity tower =
-            new TowerEntity(
-                world,
-                data,
-                data.name() + "_" + side + "_" + i,
-                side,
-                teamX(tileMap, side, object.x()),
-                teamY(tileMap, side, object.y()),
-                level);
-        if (!towersAttack) {
-          tower.holdFire();
-        }
-        battle.getHolder().add(tower);
-      }
-    }
-    UnitData middle = world.getRecords().unit(KING_TOWER_MIDDLE);
-    for (int side = 0; side < 2; side++) {
-      CharacterEntity piece =
-          new CharacterEntity(
-              world,
-              middle,
-              middle.name() + "_" + side,
-              side,
-              teamX(tileMap, side, MIDDLE_X),
-              teamY(tileMap, side, MIDDLE_Y),
-              sides.get(side).kingLevel());
-      checkState(
-          piece.getHitPoints() == null,
-          () -> KING_TOWER_MIDDLE + " has hit points, which a team's middle piece is not held to");
-      // The setup makes it as it makes the towers, standing from the start: it never deploys.
-      piece.getView().setState(GridEntityState.STANDING);
-      piece.getView().setDeployCountdown(0);
-      battle.getHolder().add(piece);
-      piece.start();
-    }
-    // The setup places the towers straight into the live list, so they stand from the first tick.
-    battle.getHolder().cleanup();
-  }
-
-  /**
-   * A team battle's object position along the width: the routing cell's, mirrored across the width
-   * for sides 0 and 1.
-   */
-  private static int teamX(TileMap tileMap, int side, int cell) {
-    return (side <= 1 ? tileMap.width() - cell : cell) * TileMap.CELL_UNITS;
-  }
-
-  /**
-   * A team battle's object position along the length: the routing cell's, mirrored along the length
-   * for the odd sides, team 1.
-   */
-  private static int teamY(TileMap tileMap, int side, int cell) {
-    return ((side & 1) != 0 ? tileMap.height() - cell : cell) * TileMap.CELL_UNITS;
   }
 
   /**
@@ -716,79 +607,24 @@ public class Standard1v1Battle {
       int[] slots0,
       int[] slots1,
       List<List<String>> excludedEvolutions) {
-    checkState(!world.teamBattle(), "a team battle plays the team match");
-    return startMatch(
-        LadderMatch.GAME_MODE,
-        List.of(deck0, deck1),
-        new int[] {playerWord0, playerWord1},
-        List.of(slots0, slots1),
-        excludedEvolutions);
-  }
-
-  /**
-   * Plays a team battle as the Ladder's team match between its four players, set up before the
-   * first step as a match of two is: each king's starting elixir and its deck shuffled into its
-   * battle order, side 0 to side 3, with the battle's random source. Each player has its own
-   * elixir, deck, hand and plays.
-   *
-   * @param decks each side's deck, by card row name, side 0 to side 3
-   * @param playerWords each side's word, added to its shuffle's draw
-   * @param slots each side's slot flags, by deck index
-   * @param excludedEvolutions each side's evolutions excluded from the battle, by row name
-   * @return the match
-   */
-  public LadderMatch startTeamMatch(
-      List<List<String>> decks,
-      int[] playerWords,
-      List<int[]> slots,
-      List<List<String>> excludedEvolutions) {
-    return startTeamMatch(
-        LadderMatch.TEAM_GAME_MODE, decks, playerWords, slots, excludedEvolutions);
-  }
-
-  /**
-   * Plays a team battle as a team match under one of the team rows ({@link
-   * LadderMatch#TEAM_GAME_MODES}), set up as {@link #startTeamMatch(List, int[], List, List)} sets
-   * up the Ladder's: the match reads its timeline and start cooldown from the row it is played
-   * under.
-   *
-   * @param gameMode the team row the match is played under
-   * @param decks each side's deck, by card row name, side 0 to side 3
-   * @param playerWords each side's word, added to its shuffle's draw
-   * @param slots each side's slot flags, by deck index
-   * @param excludedEvolutions each side's evolutions excluded from the battle, by row name
-   * @return the match
-   */
-  public LadderMatch startTeamMatch(
-      String gameMode,
-      List<List<String>> decks,
-      int[] playerWords,
-      List<int[]> slots,
-      List<List<String>> excludedEvolutions) {
-    checkState(world.teamBattle(), "only a team battle plays the team match");
-    return startMatch(gameMode, decks, playerWords, slots, excludedEvolutions);
-  }
-
-  /** Sets the match up under its game mode row, for as many players as the battle has. */
-  private LadderMatch startMatch(
-      String gameMode,
-      List<List<String>> decks,
-      int[] words,
-      List<int[]> slots,
-      List<List<String>> excludedEvolutions) {
     LadderMatch ladder =
         new LadderMatch(
-            world, world.getRecords(), gameMode, decks, words, slots, excludedEvolutions);
+            world,
+            world.getRecords(),
+            List.of(deck0, deck1),
+            new int[] {playerWord0, playerWord1},
+            List.of(slots0, slots1),
+            excludedEvolutions);
     battle.setMode(ladder);
     world.setKingVisit(ladder::kingVisit);
     this.match = ladder;
-    this.playerWords = words.clone();
+    this.playerWords = new int[] {playerWord0, playerWord1};
     // Each king's two champion slots, then each deck's pass over them, side 0 first: the avatar
     // setup ends its deck's setup with the pass, after the hand is dealt.
-    for (int side = 0; side < decks.size(); side++) {
+    for (int side = 0; side < 2; side++) {
       world.kingTower(side).makeChampionSlots();
     }
-    for (int side = 0; side < decks.size(); side++) {
+    for (int side = 0; side < 2; side++) {
       world.kingTower(side).championDeckPass(deckChampions(side, ladder.side(side).deck()));
     }
     return ladder;

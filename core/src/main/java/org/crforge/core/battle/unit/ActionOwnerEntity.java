@@ -77,11 +77,6 @@ public final class ActionOwnerEntity extends BattleEntity implements ActionOwner
   }
 
   @Override
-  public boolean inTeamBattle() {
-    return world.teamBattle();
-  }
-
-  @Override
   public String name() {
     return name;
   }

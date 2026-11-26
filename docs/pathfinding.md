@@ -31,7 +31,7 @@ The four items once listed here as unresolved are implemented:
 
 ## Where the rules run
 
-The battle core's entity tick visits every entity of a snapshot in ascending id, which is creation order within a kind. The towers of a standard battle are created first. Before any component runs, the holder's pre-pass rebuilds the spatial index and the building footprint overlay from the snapshot and copies the per-team change flags (a team is its side in a battle of two; sides 0 and 2, or 1 and 3, in a team battle). Then:
+The battle core's entity tick visits every entity of a snapshot in ascending id, which is creation order within a kind. The towers of a standard battle are created first. Before any component runs, the holder's pre-pass rebuilds the spatial index and the building footprint overlay from the snapshot and copies the per-side change flags. Then:
 
 1. The targeting pass (component slot 0), per entity: the targeting visit, then the resume tail when the visit asked for one.
 2. The movement pass (component slot 1), per entity: the movement visit. It announces route preparation, the route follower, the avoidance handler, the push pass and each displacement, and `MovementChain` runs each pass at the point it is announced so that the passes see each other's writes.
@@ -205,7 +205,7 @@ The integration requirements this document previously listed are now implemented
 
 What is left are the cases outside the current scope and the pieces below.
 
-- **Event maps** are out of scope: the battle core plays the standard arena, and a 2v2 battle on its location's map read from the game tables ([The battle core](battle-core.md)).
+- **2v2 and event maps** are out of scope: the battle core plays the standard arena only ([The battle core](battle-core.md)).
 - **Blocks the entity state visit does not carry**: the buff a unit gets while it is not attacking, the self-damage of a kamikaze unit, elixir generation, the hide handling, the morph timer with its growth scale, and the live spawner.
   - The battle core runs the not-attacking section and the hide handler where the visit reaches them, and a hiding row's targeting visit at its deploy end.
   - Each is gated by a configuration column belonging to a part of the simulation outside movement and routing, and none of them changes a state or a position that routing reads.

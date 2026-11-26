@@ -803,7 +803,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A card play enters the state in the command pass, between the holder's post-pass that empties the index and the pre-pass that fills it, so the play's push finds nobody. A unit that waits its turn enters it inside the tick, with the index filled, and pushes.
 
-- The placement of a card play covers troop cards, building cards and spells cast as one projectile or one area effect, in a battle of two players and in a team battle.
+- The placement of a card play covers troop cards, building cards and spells cast as one projectile or one area effect in a battle of two players.
 
   A building card is read from the buildings card table and played as a troop card is. Its unit is a buildings-table row, whose even footprint the search snaps to the tile corner and searches over, and it deploys at once. A building card that waits to deploy is refused.
 

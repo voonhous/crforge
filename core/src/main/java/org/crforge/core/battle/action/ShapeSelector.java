@@ -13,7 +13,6 @@ import lombok.Getter;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.grid.CellGrid;
 
 /**
  * An action that lasts on an area effect and, on ticks set from its start, runs an action on the
@@ -68,9 +67,7 @@ import org.crforge.core.pathfinding.grid.CellGrid;
             + " alone, which runs the slap selector written in Vines' form from Vines' area"
             + " effect, as are the ties, the shield, a row that picks again and an underground"
             + " object. Waiting for a target, the pause tags, the side actions on the owner and"
-            + " the row's tags on a character, held by ability_hero_giant_slap; the side actions"
-            + " by team in a team battle, held by tvt2_slap_gianthero_left_s2, _left_s3,"
-            + " _right_s2 and _right_s3. The action on the"
+            + " the row's tags on a character, held by ability_hero_giant_slap. The action on the"
             + " owner whatever the side, the owner as the cause of the actions on itself, the"
             + " Closest mode, the run's context on every schedule and the finishing action, held"
             + " by hero_balloon and BalloonHeroAbilityTest. The run an owner leaves unfinished"
@@ -186,29 +183,6 @@ public final class ShapeSelector extends RowAction {
     }
     host.selectorStarted(this, holder.passPhase(), List.copyOf(run.due));
     return run;
-  }
-
-  /**
-   * The row run on the owner for a pick by the side it lies on, by the owner's team: for team 1
-   * (side 1, and side 3 in a team battle) the left row when the pick's x is below the owner's and
-   * the right row otherwise, for team 0 (side 0, and side 2) the other way round, for the neutral
-   * team neither.
-   *
-   * @param columns the row's columns
-   * @param ownerSide the owner's side
-   * @param ownerX the owner's x
-   * @param pickX the pick's x
-   * @return the row's name, or null for none
-   */
-  static String sideAction(Columns columns, int ownerSide, int ownerX, int pickX) {
-    int team = CellGrid.team(ownerSide);
-    boolean pickBelow = ownerX > pickX;
-    if (pickBelow) {
-      return team == 1
-          ? columns.actionOnSelfLeft()
-          : team == 0 ? columns.actionOnSelfRight() : null;
-    }
-    return team == 0 ? columns.actionOnSelfLeft() : team == 1 ? columns.actionOnSelfRight() : null;
   }
 
   /** One run: the due ticks and the ids picked so far. */
@@ -337,12 +311,25 @@ public final class ShapeSelector extends RowAction {
       }
     }
 
-    /** The row run on the owner for a pick by the side it lies on (see {@link #sideAction}). */
+    /**
+     * The row run on the owner for a pick by the side it lies on: for an owner of side 1 the left
+     * row when the pick's x is below the owner's and the right row otherwise, for side 0 the other
+     * way round, for any other side neither.
+     */
     private String sideAction(int pick) {
       if (columns.actionOnSelfLeft() == null && columns.actionOnSelfRight() == null) {
         return null;
       }
-      return ShapeSelector.sideAction(columns, host.ownerSide(), host.ownerX(), host.x(pick));
+      int side = host.ownerSide();
+      boolean pickBelow = host.ownerX() > host.x(pick);
+      if (pickBelow) {
+        return side == 1
+            ? columns.actionOnSelfLeft()
+            : side == 0 ? columns.actionOnSelfRight() : null;
+      }
+      return side == 0
+          ? columns.actionOnSelfLeft()
+          : side == 1 ? columns.actionOnSelfRight() : null;
     }
 
     /**

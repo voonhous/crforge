@@ -102,7 +102,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
     note =
         "Settled: the index and the overlay are rebuilt in the pre-pass from the id-ordered"
             + " snapshot of the arena entities and retired in the post-pass, the overlay's"
-            + " per-team change flags are copied once per tick, a projectile is in neither and is"
+            + " per-side change flags are copied once per tick, a projectile is in neither and is"
             + " handed to the holder in the tick of its launch, and a dead entity leaves the"
             + " holder in the closing cleanup of the tick it dies - the king tower excepted,"
             + " which never does - when every arena entity is told at once and its default target"
@@ -1237,195 +1237,6 @@ public class BattleWorld implements HolderPasses {
     return out;
   }
 
-  /**
-   * The princess towers of a team still in the battle, in the order the holder lists them: both
-   * partners' in a team battle, the side's own in a battle of two, whose teams are its sides. A
-   * destroyed one is listed until the cleanup that removes it.
-   *
-   * @param team 0 or 1
-   */
-  List<TowerEntity> teamPrincessTowers(int team) {
-    List<TowerEntity> out = new ArrayList<>();
-    for (BattleEntity entity : holder.entities()) {
-      if (entity instanceof TowerEntity tower
-          && tower.getData().summonerTower()
-          && team(tower.side()) == team) {
-        out.add(tower);
-      }
-    }
-    return out;
-  }
-
-  /** The players of a battle of one player a side, sides 0 and 1. */
-  public static final int ONE_A_SIDE = 2;
-
-  /** The players of a team battle: sides 0 and 2 are team 0, sides 1 and 3 team 1. */
-  public static final int TEAM_BATTLE = 4;
-
-  /** The side of an object that belongs to neither player, which is of team 2. */
-  private static final int NEUTRAL_SIDE = 100;
-
-  /** The team of the neutral side. */
-  private static final int NEUTRAL_TEAM = 2;
-
-  /**
-   * The battle's players, its avatar count: {@value #ONE_A_SIDE}, or {@value #TEAM_BATTLE} in a
-   * team battle. It is set before the towers are made, which a team battle makes otherwise.
-   */
-  @Getter private int avatarCount = ONE_A_SIDE;
-
-  /**
-   * Sets the battle's players before anything is made in it.
-   *
-   * @param avatarCount {@value #ONE_A_SIDE} or {@value #TEAM_BATTLE}
-   */
-  public void setAvatarCount(int avatarCount) {
-    checkState(
-        avatarCount == ONE_A_SIDE || avatarCount == TEAM_BATTLE,
-        () -> "a battle of " + avatarCount + " players");
-    checkState(holder.entities().isEmpty(), "the players are set before anything is made");
-    this.avatarCount = avatarCount;
-  }
-
-  /** Whether the battle is a team battle, of {@value #TEAM_BATTLE} players two a team. */
-  public boolean teamBattle() {
-    return avatarCount == TEAM_BATTLE;
-  }
-
-  /**
-   * Refuses, in a team battle, a rule whose mirror or facing the battle core takes from the side as
-   * a battle of two has it: the game mirrors such rules by the team in a team battle, or asks the
-   * other team's two players, which is not modelled.
-   *
-   * @param what the rule and its object, as the refusal names them
-   * @throws UnsupportedOperationException in a team battle
-   */
-  public void refuseInTeamBattle(String what) {
-    if (teamBattle()) {
-      throw new UnsupportedOperationException(
-          what
-              + " in a team battle, whose mirror by team or other team's two players is not"
-              + " modelled");
-    }
-  }
-
-  /**
-   * The team of a side, as the game asks it: the side's parity, so sides 0 and 2 are team 0 and
-   * sides 1 and 3 team 1, and team 2 for the neutral side. In a battle of one player a side the
-   * team is the side.
-   *
-   * @param side a side
-   * @return its team
-   */
-  public static int team(int side) {
-    return side == NEUTRAL_SIDE ? NEUTRAL_TEAM : side % 2;
-  }
-
-  /**
-   * The partner of a side in a team battle: side 0 and side 2 are partners, side 1 and side 3; a
-   * battle of one player a side, and the neutral side, have none.
-   *
-   * @param side a side
-   * @return the partner's side, or -1 for none
-   */
-  public int partner(int side) {
-    if (!teamBattle() || side < 0 || side >= TEAM_BATTLE) {
-      return -1;
-    }
-    return (side + 2) % TEAM_BATTLE;
-  }
-
-  /**
-   * A team's middle piece in a team battle, the {@value Standard1v1Battle#KING_TOWER_MIDDLE} its
-   * kings stand beside: the first one of the team still in the battle, as the game finds it.
-   *
-   * @param team 0 or 1
-   * @throws IllegalStateException when the team has none
-   */
-  CharacterEntity teamMiddle(int team) {
-    CharacterEntity middle = findTeamMiddle(team);
-    if (middle == null) {
-      throw new IllegalStateException("team " + team + " has no middle piece");
-    }
-    return middle;
-  }
-
-  /**
-   * A team's middle piece, as {@link #teamMiddle(int)} finds it, or null once it has left the
-   * battle: the tiebreaker's clearing removes both, and what asks for one then does without.
-   *
-   * @param team 0 or 1
-   */
-  CharacterEntity findTeamMiddle(int team) {
-    for (BattleEntity entity : holder.entities()) {
-      if (entity instanceof CharacterEntity character
-          && character.getData().name().equals(Standard1v1Battle.KING_TOWER_MIDDLE)
-          && team(character.side()) == team) {
-        return character;
-      }
-    }
-    return null;
-  }
-
-  /** The global that pools the hit points of a team's two kings in a team battle. */
-  static final String MERGE_KING_HIT_POINTS = "MERGE_MULTIPLE_SUMMONER_HEALTHS";
-
-  /** Whether the kings' hit points are pooled, once {@link #kingsPooled()} has read it. */
-  private Boolean kingsPooled;
-
-  /**
-   * Whether a team's two kings share one pool of hit points: in a team battle whose tables set
-   * {@value #MERGE_KING_HIT_POINTS}. The pool is the hit points of the team's king of side 0 or 1,
-   * the holder; its partner's king, of side 2 or 3, keeps hit points of its own that no hit lowers.
-   * A battle of one player a side pools nothing.
-   */
-  public boolean kingsPooled() {
-    if (kingsPooled == null) {
-      kingsPooled = teamBattle() && records.globalBoolean(MERGE_KING_HIT_POINTS);
-    }
-    return kingsPooled;
-  }
-
-  /**
-   * The partner's king of a king in a team battle: the king of its partner's side, the other half
-   * of the team's king; null for any other entity, and in a battle of one player a side.
-   *
-   * @param king the entity asked about
-   */
-  TowerEntity partnerKing(WorldEntity king) {
-    int partner = partner(king.side());
-    if (partner < 0 || !king.getData().king()) {
-      return null;
-    }
-    return kingTower(partner);
-  }
-
-  /**
-   * The partner's king a chain of projectiles lists beside a king its area takes, as the game's
-   * area path lists it under {@value #MERGE_KING_HIT_POINTS}: with the kings pooled ({@link
-   * #kingsPooled()}), the other half of the king's team's king; null for any other entity, and when
-   * the kings are not pooled.
-   *
-   * @param entity the entity the area takes
-   */
-  public WorldEntity chainPartner(WorldEntity entity) {
-    return kingsPooled() ? partnerKing(entity) : null;
-  }
-
-  /**
-   * The entity whose hit points a hit on an entity lowers: with the kings pooled ({@link
-   * #kingsPooled()}), the holder of the pool, the king of side 0 or 1, for a king of side 2 or 3;
-   * the entity itself for every other, and for everything in a battle of one player a side.
-   *
-   * @param entity the entity struck
-   */
-  WorldEntity poolHolder(WorldEntity entity) {
-    if (!kingsPooled() || !entity.getData().king() || entity.side() < 2) {
-      return entity;
-    }
-    return kingTower(partner(entity.side()));
-  }
-
   /** The kings' elixir in a match, which collectors and deaths pay into; null outside one. */
   @Getter @Setter private KingElixir kingElixir;
 
@@ -1949,7 +1760,7 @@ public class BattleWorld implements HolderPasses {
    * @param play the play's name
    */
   void championCardPlayed(int side, UnitData champion, int index, String play) {
-    for (int kingSide = 0; kingSide < avatarCount; kingSide++) {
+    for (int kingSide = 0; kingSide < 2; kingSide++) {
       TowerEntity king = kingTower(kingSide);
       if (king != null) {
         king.championCardPlayed(side, champion, index, play);
@@ -2117,8 +1928,6 @@ public class BattleWorld implements HolderPasses {
     boolean homing = sourceTarget != null && source.getData().homing();
     int aimX = homing ? sourceTarget.getView().getX() : source.getAimX();
     int aimY = homing ? sourceTarget.getView().getY() : source.getAimY();
-    // No side or team turns it: in a team battle it is thrown as in a battle of two, for the cast
-    // projectile's side, from where that projectile stands.
     ProjectileEntity projectile = new ProjectileEntity(this, data, source.side());
     projectile.castMirrored(source, tileMap.width() * TileMap.CELL_UNITS - aimX, aimY);
     holder.add(projectile);
@@ -2206,10 +2015,8 @@ public class BattleWorld implements HolderPasses {
     int stepRing = count > 1 ? 360 / (count - 1) : 0;
     int r90 = radius * 90 / 100;
     int r90sq = r90 * r90;
-    // A team battle's spell sets out from its team's middle piece, beside the king.
-    GridEntity origin = teamBattle() ? teamMiddle(team(side)).getView() : king.getView();
-    int kx = origin.getX();
-    int ky = origin.getY();
+    int kx = king.getView().getX();
+    int ky = king.getView().getY();
     int height = 3 * king.getData().collisionRadius();
     int base = 0;
     ProjectileEntity first = null;
@@ -2554,9 +2361,7 @@ public class BattleWorld implements HolderPasses {
   /**
    * A filter form area effect's buff on one object it lists: applied with the area effect as the
    * source, at its level and for its side, for the given time, the area effect its parent when the
-   * buff is controlled by its parent. In a team battle a king's buff then goes to its partner's
-   * king, the other half of the team's king, unless the buff deals damage over time at level 0, and
-   * to the team's middle piece while it is in the battle, each as the king had it.
+   * buff is controlled by its parent.
    *
    * @param areaEffect the area effect
    * @param target the object
@@ -2564,27 +2369,11 @@ public class BattleWorld implements HolderPasses {
    * @param time how long it lasts
    */
   void filterBuff(AreaEffectEntity areaEffect, WorldEntity target, BuffData buff, int time) {
-    List<WorldEntity> targets = new ArrayList<>();
-    targets.add(target);
-    // In a team battle a king's buff is carried to the other half of its team's king, unless it
-    // deals damage over time, and always to the team's middle piece.
-    TowerEntity partner = partnerKing(target);
-    if (partner != null) {
-      if (BuffComponent.damagePerSecond(buff, 0) == 0) {
-        targets.add(partner);
-      }
-      CharacterEntity middle = findTeamMiddle(team(target.side()));
-      if (middle != null) {
-        targets.add(middle);
-      }
-    }
-    events.areaBuff(areaEffect, buff, time, targets);
+    events.areaBuff(areaEffect, buff, time, List.of(target));
     AreaEffectEntity parent = buff.controlledByParent() ? areaEffect : null;
-    for (WorldEntity reached : targets) {
-      reached
-          .getBuffs()
-          .apply(buff, time, areaEffect.getPackedLevel(), areaEffect, areaEffect.side(), parent);
-    }
+    target
+        .getBuffs()
+        .apply(buff, time, areaEffect.getPackedLevel(), areaEffect, areaEffect.side(), parent);
   }
 
   /**
@@ -3709,18 +3498,6 @@ public class BattleWorld implements HolderPasses {
             buff,
             data.maximumTargets(),
             target -> projectileBuffReaches(projectile, target));
-    // In a team battle the game carries a king's buff to its partner's king and its team's middle
-    // piece, as an area effect's; no recorded team battle holds it for a projectile's circle.
-    for (WorldEntity target : targets) {
-      if (teamBattle() && target.getData().king()) {
-        throw new UnsupportedOperationException(
-            "the target buff of "
-                + projectile.getData().name()
-                + " on the circle of its impact over "
-                + target.name()
-                + ", a king of a team battle, is not modelled");
-      }
-    }
     events.projectileBuff(projectile, buff, time, targets);
     for (WorldEntity target : targets) {
       target
@@ -3757,33 +3534,6 @@ public class BattleWorld implements HolderPasses {
   void notAttackingBuff(CharacterEntity unit, int time) {
     BuffData buff = buffData(unit.getData().buffWhenNotAttacking());
     unit.getBuffs().apply(buff, time, unit.getPackedLevel(), unit, unit.side());
-  }
-
-  /**
-   * Refuses a projectile's impact on its one target, a king of a team battle, by the part of the
-   * hit no recorded team battle holds: the row's on-hit action. The rest of the impact strikes the
-   * king as it is, a king of side 2 or 3 included: the game's single-target impact hands the struck
-   * king's own hit points to the damage entry, whose dealer moves the subtraction to the pool, and
-   * the target buff, before or after the damage, goes to the struck king alone (no copy to its
-   * partner's king or the team's middle piece), held by the team battle reference battles
-   * tvt2_lightning_king0, tvt2_lightning_king2 and tvt2_edragon_king2. Only the travelling hit of a
-   * flying body swaps a king of side 2 or 3 for the pool's holder (see {@link
-   * HitQueue#travellingHit}).
-   *
-   * @param projectile the projectile landing
-   * @param target its target
-   */
-  public void refuseTeamKingImpact(ProjectileEntity projectile, WorldEntity target) {
-    if (teamBattle()
-        && target.getData().king()
-        && projectile.getData().onHitTargetAction() != null) {
-      throw new UnsupportedOperationException(
-          "the on-hit action of "
-              + projectile.getData().name()
-              + " on "
-              + target.name()
-              + ", a king of a team battle, is not modelled");
-    }
   }
 
   /**

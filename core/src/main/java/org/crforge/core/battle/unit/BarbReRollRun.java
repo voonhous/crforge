@@ -39,8 +39,7 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " The turn back to the hero's side by a deflector of each side, and the turn over"
             + " to a side whose slot holds the hero's row from the deck and follows no play,"
             + " which then follows it; held by reroll_twice_t316, reroll_twice_t327 and"
-            + " reroll_turned_to_idle_slot_t316. In a team battle the other team's king of side"
-            + " 0 or 1, held by tvt2_reroll_barblog_s2 and _s3.")
+            + " reroll_turned_to_idle_slot_t316.")
 final class BarbReRollRun extends ActionInstance {
 
   /** Milliseconds one step takes off the counter. */
@@ -138,8 +137,7 @@ final class BarbReRollRun extends ActionInstance {
    *
    * <p>Refused: a battle with no summoner on the other side.
    */
-  // Package-private for its test.
-  void turnOver() {
+  private void turnOver() {
     TowerEntity summoner = facingSummoner();
     unit.getView().setSide(summoner.side());
     unit.setCastId(summoner.castId());
@@ -147,15 +145,12 @@ final class BarbReRollRun extends ActionInstance {
   }
 
   /**
-   * The summoner facing the barbarian's side as it stands now: the other team's main king, the king
-   * of side 1 for team 0 and of side 0 for team 1. In a battle of two it is the other side's king;
-   * in a team battle side 2's barbarian faces side 1's king, side 3's side 0's, whichever king did
-   * the turning.
+   * The summoner facing the barbarian's side as it stands now: the other side's king.
    *
    * @return the summoner
    */
   private TowerEntity facingSummoner() {
-    TowerEntity summoner = unit.world().kingTower((BattleWorld.team(unit.side()) & 1) ^ 1);
+    TowerEntity summoner = unit.world().kingTower(WorldEntity.opposing(unit.side()));
     if (summoner == null) {
       throw new UnsupportedOperationException(
           row.name() + "'s turned roll in a battle with no summoner facing its side, not modelled");

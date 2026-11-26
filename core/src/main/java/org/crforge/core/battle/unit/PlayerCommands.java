@@ -639,9 +639,6 @@ public final class PlayerCommands {
    * far, enemy edge are not tested: a point off them is moved by the search.
    */
   private boolean beyondOwnEdge(int side, int y) {
-    if (y < 0 || y >= battle.getWorld().getTileMap().heightUnits()) {
-      battle.getWorld().refuseInTeamBattle("a drop beyond the arena's length by side " + side);
-    }
     return side == 0 ? y < 0 : y >= battle.getWorld().getTileMap().heightUnits();
   }
 

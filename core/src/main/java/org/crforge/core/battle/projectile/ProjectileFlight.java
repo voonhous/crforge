@@ -522,13 +522,10 @@ final class ProjectileFlight {
     } else {
       WorldEntity target = p.getTarget();
       if (target != null) {
-        // A king of side 2 or 3 of a team battle is struck as it is: the dealer moves the
-        // subtraction to the pool, the target buff stays on the half struck.
-        world.refuseTeamKingImpact(p, target);
         if (buffFirst) {
           world.projectileTargetBuff(p, target);
         }
-        singleImpact(p, world, target, damage, towerDamage, hitId);
+        singleImpact(p, world, target.getTargetView(), damage, towerDamage, hitId);
       }
     }
     // A projectile that flies to a point hits what its body covers at its aim once more.
@@ -662,13 +659,9 @@ final class ProjectileFlight {
         chain == null
             ? null
             : p.getDeflections() != 0
-                ? new AreaDamage.Chain(0, 0, 0, chain.getHitIds(), chain.getPartnerIds())
+                ? new AreaDamage.Chain(0, 0, 0, chain.getHitIds())
                 : new AreaDamage.Chain(
-                    chain.getX(),
-                    chain.getY(),
-                    chain.getRadius(),
-                    chain.getHitIds(),
-                    chain.getPartnerIds());
+                    chain.getX(), chain.getY(), chain.getRadius(), chain.getHitIds());
     AreaDamage.Outcome outcome =
         AreaDamage.damage(
             p.areaOwner(),
@@ -681,13 +674,6 @@ final class ProjectileFlight {
               @Override
               public boolean untouchable(TargetView victim) {
                 return world.entityOf(victim.getEntity()).passedByAreaCollection();
-              }
-
-              // In a team battle a chain lists a struck king's partner's king beside it.
-              @Override
-              public int chainPartnerId(TargetView victim) {
-                WorldEntity partner = world.chainPartner(world.entityOf(victim.getEntity()));
-                return partner == null ? AreaDamage.NO_PARTNER : partner.getId();
               }
 
               @Override
@@ -713,11 +699,10 @@ final class ProjectileFlight {
   private static void singleImpact(
       ProjectileEntity p,
       BattleWorld world,
-      WorldEntity struck,
+      TargetView target,
       int damage,
       int towerDamage,
       int hitId) {
-    TargetView target = struck.getTargetView();
     if (damage < 1 || !target.isHitPointsPresent()) {
       return;
     }
@@ -725,6 +710,6 @@ final class ProjectileFlight {
     int directionX = p.getAimX() - p.getStartX();
     int directionY = p.getAimY() - p.getStartY();
     // Queued for the damage drain.
-    world.getHits().dealProjectileHit(p, struck, dealt, hitId, directionX, directionY);
+    world.getHits().dealProjectileHit(p, p.getTarget(), dealt, hitId, directionX, directionY);
   }
 }

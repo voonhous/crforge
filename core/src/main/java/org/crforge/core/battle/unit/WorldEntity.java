@@ -351,7 +351,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             data.rarity(),
             data.king(),
             data.summonerTower());
-    maximum = teamBattleHitPoints(world, data, maximum);
     this.hitPoints = maximum > 0 ? new HitPoints(maximum) : null;
     if (hitPoints != null) {
       hitPoints.setDecayStep(HitPoints.decayStep(maximum, data.lifeTimeMs()));
@@ -476,7 +475,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
-    refuseFallenTeamKing();
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.damage(
@@ -488,7 +486,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             damageQueries(passesHidden, dealer, true, heard, cause, false, noCounter));
     shieldHit(damage, shieldBefore, cause);
     refreshHitPoints();
-    refreshPool();
     return result;
   }
 
@@ -496,10 +493,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * Takes a reflected attack's damage, as the damage drain deals it: the damage entry as any hit's,
    * with the battle's holds, the hidden test and the untouchable test lifted, the one struck never
    * riding on a parent. The hit does not pierce immunity, so an unkillable target is held at 1 hit
-   * point as by any other hit, and a target whose tags forbid damage takes none of it. A king of
-   * side 2 or 3 of a team battle takes it as any hit: its team's pool, its partner's king's hit
-   * points, loses the damage, while the reflect's buff stays on the king struck back, held by the
-   * team battle reference battle tvt2_reflect_king3.
+   * point as by any other hit, and a target whose tags forbid damage takes none of it.
    */
   DamageResult takeReflectedDamage(
       WorldEntity reflecting, int damage, int directionX, int directionY) {
@@ -518,7 +512,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
               + name()
               + ", whose buffs scale its damage, is not modelled");
     }
-    refuseFallenTeamKing();
     int shieldBefore = hitPoints.getShield();
     boolean crownTower = targetView.isCrownTowerTarget();
     DamageResult result =
@@ -565,18 +558,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
               public boolean unkillable() {
                 return WorldEntity.this.unkillable();
               }
-
-              // The reflect queues its hit on the one struck back, a king of side 2 or 3 of a team
-              // battle as it is; the dealer moves the subtraction to the team's pool, as for any
-              // hit.
-              @Override
-              public HitPoints subtracted(HitPoints own) {
-                return subtractedHitPoints();
-              }
             });
     shieldHit(damage, shieldBefore, reflecting);
     refreshHitPoints();
-    refreshPool();
     return result;
   }
 
@@ -649,51 +633,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * The default targets of a team battle, registered as {@link #registerCandidates(List)} does a
-   * battle of two's: the other team's towers. Its king of side 0 or 1 seeds the selection, its
-   * partner's king, the other half of the team's king, is the alternate seed the team battle's
-   * answers name, and both partners' princess towers are the candidates, in creation order. A unit
-   * of the neutral side has no other team, and is refused.
-   */
-  private void registerTeamCandidates(List<WorldEntity> present) {
-    int team = BattleWorld.team(side());
-    if (team > 1) {
-      throw new UnsupportedOperationException(
-          "the default targets of "
-              + name()
-              + ", of the neutral side in a team battle, are not"
-              + " modelled");
-    }
-    int enemyTeam = 1 - team;
-    if (towersRegistered
-        || present.stream()
-            .noneMatch(e -> e instanceof TowerEntity && BattleWorld.team(e.side()) == enemyTeam)) {
-      return;
-    }
-    towersRegistered = true;
-    TowerEntity alternate = null;
-    for (WorldEntity entity : present) {
-      if (entity instanceof TowerEntity tower && BattleWorld.team(tower.side()) == enemyTeam) {
-        if (tower.getData().king()) {
-          selection.register(tower.getTargetView());
-          if (tower.side() == enemyTeam) {
-            selection.setSeed(tower.getTargetView());
-          } else {
-            alternate = tower;
-          }
-        } else {
-          selection.registerTower(tower.getTargetView());
-        }
-      }
-    }
-    if (alternate == null) {
-      throw new IllegalStateException(name() + " finds no partner king on the other team");
-    }
-    selection.setDefaultSelectionQueries(
-        DefaultSelectionQueries.teamBattle(alternate.getTargetView()));
-  }
-
-  /**
    * Makes every arena entity of this tick known to the entity's selection. The first call that
    * finds the opposing side's towers also registers its princess towers as the default targets, in
    * creation order along the arena's width, and seeds the selection with its king, which is no
@@ -702,9 +641,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   void registerCandidates(List<WorldEntity> present) {
     int enemy = opposing(side());
-    if (world.teamBattle()) {
-      registerTeamCandidates(present);
-    } else if (!towersRegistered
+    if (!towersRegistered
         && present.stream().anyMatch(e -> e instanceof TowerEntity && e.side() == enemy)) {
       towersRegistered = true;
       for (WorldEntity entity : present) {
@@ -1366,13 +1303,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       public boolean unkillable() {
         return WorldEntity.this.unkillable();
       }
-
-      // A king of side 2 or 3 of a team battle keeps its own dedupe list, while the subtraction
-      // lowers its team's pool, its partner's king's hit points.
-      @Override
-      public HitPoints subtracted(HitPoints own) {
-        return subtractedHitPoints();
-      }
     };
   }
 
@@ -1569,7 +1499,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
-    refuseFallenTeamKing();
     int shieldBefore = hitPoints.getShield();
     // A character or tower that applied the buff counts its hits.
     DamageResult result =
@@ -1579,7 +1508,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             damageQueries(false, source instanceof WorldEntity dealer ? dealer : null, false));
     shieldHit(damage, shieldBefore, source);
     refreshHitPoints();
-    refreshPool();
     return result;
   }
 
@@ -1633,36 +1561,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   private int shieldMaximumTaken(int rowShield) {
     return rowShield != 0 ? rowShield : hitPoints.getShieldMaximum();
-  }
-
-  /** The global that raises a king's hit points in a team battle, by percent. */
-  static final String TEAM_KING_HIT_POINTS_PERCENT = "TEAM_VS_TEAM_SUMMONER_HP_INCREASE_PERCENTAGE";
-
-  /** The global that raises a princess tower's hit points in a team battle, by percent. */
-  static final String TEAM_PRINCESS_TOWER_HIT_POINTS_PERCENT =
-      "TEAM_VS_TEAM_PRINCESS_TOWER_HP_INCREASE_PERCENTAGE";
-
-  /**
-   * The maximum hit points an object starts at in its battle: in a team battle a king's
-   * (IsSummoner) raised by {@value #TEAM_KING_HIT_POINTS_PERCENT} and a princess tower's
-   * (IsSummonerTower) by {@value #TEAM_PRINCESS_TOWER_HIT_POINTS_PERCENT}, the percent rounded up
-   * as the game rounds it; every other object's, and every object's in a battle of one player a
-   * side, as its level gives it. Every king of a team battle is raised, both partners'.
-   *
-   * @param maximum the hit points at the object's level
-   */
-  private static int teamBattleHitPoints(BattleWorld world, UnitData data, int maximum) {
-    if (!world.teamBattle() || maximum <= 0 || !(data.king() || data.summonerTower())) {
-      return maximum;
-    }
-    int percent = 100;
-    if (data.king()) {
-      percent += world.getRecords().globalNumber(TEAM_KING_HIT_POINTS_PERCENT);
-    }
-    if (data.summonerTower()) {
-      percent += world.getRecords().globalNumber(TEAM_PRINCESS_TOWER_HIT_POINTS_PERCENT);
-    }
-    return (percent * maximum + 99) / 100;
   }
 
   /** A shield's value at a level: its row's ShieldHitpoints by the card hit-points rule. */
@@ -1743,83 +1641,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * Refuses a hit on a king of side 2 or 3 in a team battle, whose hit points are pooled with its
-   * partner's king's, by a path no recorded team battle holds: the game lowers the pool for every
-   * hit, but whether this path reaches it as the others do is not established.
-   *
-   * @param path the hit, as the refusal names it
-   */
-  private void refuseTeamKingHit(String path) {
-    if (world.poolHolder(this) != this) {
-      throw new UnsupportedOperationException(
-          path
-              + " on "
-              + name()
-              + ", the king of side "
-              + side()
-              + " in a team battle, whose hit points are pooled with its partner's king's, is not"
-              + " modelled");
-    }
-  }
-
-  /**
-   * Refuses a heal on a king of a team battle, either half of its team's king: the game pools the
-   * two kings' hit points in the holder's, and how a heal reaches the pool, or a half's own hit
-   * points, is not traced. No Ladder heal reaches a king in a recorded team battle: every heal
-   * area's filter leaves the towers out, as tvt2_heal_area_king2 shows.
-   */
-  @Override
-  public void refuseHeal() {
-    if (world.kingsPooled() && data.king()) {
-      throw new UnsupportedOperationException(
-          "a heal on "
-              + name()
-              + ", a king of a team battle whose hit points are pooled with its partner's king's,"
-              + " is not modelled");
-    }
-  }
-
-  /**
-   * Refuses a hit on a king of a team battle whose team's pool has already fallen while the battle
-   * has not yet ended: a second hit in the step of the king's fall. The game refuses an attacker's
-   * target that is not alive by its own hit points once its partner's king exists, but which hits
-   * reach the pool after its fall in that step no recorded team battle holds.
-   */
-  private void refuseFallenTeamKing() {
-    if (!world.kingsPooled() || !data.king() || world.isMatchEnded()) {
-      return;
-    }
-    WorldEntity holder = world.poolHolder(this);
-    if (!HitPoints.alive(holder.getHitPoints())) {
-      throw new UnsupportedOperationException(
-          "a hit on "
-              + name()
-              + ", a king of a team battle whose team's pool of hit points has fallen in the step,"
-              + " is not modelled");
-    }
-  }
-
-  /**
-   * The hit points the subtraction of a hit on the entity lowers: its own, but for a king of side 2
-   * or 3 in a team battle whose kings are pooled, the pool's, its partner's king's.
-   */
-  private HitPoints subtractedHitPoints() {
-    WorldEntity holder = world.poolHolder(this);
-    return holder == this ? hitPoints : holder.getHitPoints();
-  }
-
-  /**
-   * Brings the pool's holder back into step after a hit on the other half of its team's king: the
-   * hit lowered the holder's hit points, not the struck king's.
-   */
-  private void refreshPool() {
-    WorldEntity holder = world.poolHolder(this);
-    if (holder != this) {
-      holder.refreshHitPoints();
-    }
-  }
-
-  /**
    * Takes one heal of a buff's heal over time, capped as the hit-point object caps it: a king tower
    * below its maximum stops one short of it.
    *
@@ -1827,7 +1648,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @param overHealPercent the share of the maximum the heal may reach; 0 for the maximum
    */
   void takeHeal(int amount, int overHealPercent) {
-    refuseHeal();
     Healing.heal(hitPoints, amount, overHealPercent, data.king());
     refreshHitPoints();
   }
@@ -1840,11 +1660,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   @Override
   public int castId() {
     return castId;
-  }
-
-  @Override
-  public boolean inTeamBattle() {
-    return world.teamBattle();
   }
 
   /** The entity's unique name within the battle, as logs, refusals and the visualizer name it. */
@@ -3449,7 +3264,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       throw new UnsupportedOperationException(
           "a damage that reaches hidden units reaches " + name() + ", which is not modelled");
     }
-    refuseFallenTeamKing();
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.damage(
@@ -3461,7 +3275,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             damageQueries(passesHidden, dealer, true, null, cause, reflected));
     shieldHit(amount, shieldBefore, cause);
     refreshHitPoints();
-    refreshPool();
     return result;
   }
 
@@ -3496,7 +3309,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (dealer != null) {
       refuseReflect("a typed hit");
     }
-    refuseFallenTeamKing();
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.typedHit(
@@ -3508,7 +3320,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             damageQueries(false, source, false, null, cause, false));
     shieldHit(amount, shieldBefore, cause);
     refreshHitPoints();
-    refreshPool();
 
     return result;
   }
@@ -3544,13 +3355,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (dealer != null || cause != null) {
       refuseReflect("a kill");
     }
-    refuseTeamKingHit("a kill");
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.kill(hitPoints, amount, damageQueries(false, dealer, true));
     shieldHit(amount, shieldBefore, cause);
     refreshHitPoints();
-    refreshPool();
 
     return result;
   }
@@ -3575,14 +3384,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       return DamageResult.NOTHING;
     }
     refuseReflect("a Kamikaze drain");
-    refuseTeamKingHit("a Kamikaze drain");
     int shieldBefore = hitPoints.getShield();
     // The unit is its own attacker, and counts the step.
     DamageResult result =
         DamageApplication.kamikazeDrain(hitPoints, damage, damageQueries(false, this, true));
     shieldHit(damage, shieldBefore, this);
     refreshHitPoints();
-    refreshPool();
     return result;
   }
 
@@ -3596,12 +3403,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
-    refuseTeamKingHit("a drain");
     int shieldBefore = hitPoints.getShield();
     DamageResult result = DamageApplication.drain(hitPoints, damage, damageQueries());
     shieldHit(damage, shieldBefore, null);
     refreshHitPoints();
-    refreshPool();
     return result;
   }
 

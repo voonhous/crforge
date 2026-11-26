@@ -71,7 +71,7 @@ The tables below say what each of those classes is, package by package. `unit/`,
 | `HitQueue` | the battle's damage: every hit queued for the drain, the drain that deals them after the post-hooks in the order queued, each with its reflect, buff on damage and kill, and whether the damage queued for an entity will kill it |
 | `CharacterSpawns` | the characters the battle makes after its card plays: a spawner's live spawn, a buff's spawn, riders, an impact's spawn, a spawn action's characters, a guard, an area effect's spawner, summons, a clone, a warp's landing and the death spawn on a dying object's ring |
 | `EntityDeaths` | what an arena entity's death brings: the death handler (the death and killed actions, the killing side paid), the death slot inside the killing hit (the death damage and its push, the death projectiles and spawns, the king paid, the destroyed-object listeners told), and the deaths outside a hit |
-| `Standard1v1Battle` | the standard arena with its six towers, or a team battle's map with each player's king and princess tower and each team's middle piece |
+| `Standard1v1Battle` | the standard arena with its six towers |
 | `ActivationEvent` | one step of a king tower's activation, as observers are told it |
 | `ActionOwnerEntity` | an object that only owns actions, standing in for the objects that run spawn rows in the data |
 | `AreaEffectEntity` | an area effect: an object of its own kind that stands at a point for its life and hits the area around it on a schedule |
@@ -86,7 +86,7 @@ The tables below say what each of those classes is, package by package. `unit/`,
 
 | Class | What it is |
 | --- | --- |
-| `LadderMatch` | a Ladder match as the battle's mode, between two players or the four of a team battle: the setup, the update's advance, the kings' visits, a play's gates and spend, the crowns |
+| `LadderMatch` | a Ladder match as the battle's mode: the setup, the update's advance, the kings' visits, a play's gates and spend, the crowns |
 | `Timeline` | the battle's clock: sections, the elixir rate and the next-card cooldown |
 | `BattleTimeline` | a battle timeline row, as the game mode names it |
 | `MatchSide` | one player: the elixir in ten-thousandths, the deck and the hand, each deck card's slot flags and the count per deck index |
@@ -379,7 +379,7 @@ A player's command does not run when the player gives it. The game client stamps
 
   At the run the placement search runs again from the tile sent. That moves it only if the board changed in the 20 steps between: a pocket opened or closed or a building placed or destroyed. The recordings agree: every play of the live Ladder battles in the coverage sets of 16.402.19 and 16.402.21, about 820,000, is sent on a tile centre or a building's tile corner.
 
-- **The earliest play.** A card play is refused while the battle's tick counter is below the game mode's start cooldown. That is the game mode row's `BattleStartCooldown` in milliseconds over 50, or, where the row leaves it empty, the global `LOGIC_BATTLE_START_COOLDOWN` over 50 (`LOGIC_BATTLE_START_COOLDOWN_2V2` in a team battle). Ladder and Ranked1v1_NewArena leave the column empty and the global is 4500 ms in 16.402.18, 16.402.19, 16.402.21 and 16.635.3. So a play can be given from tick counter 90 (4.5 seconds) and runs at 110 at the earliest.
+- **The earliest play.** A card play is refused while the battle's tick counter is below the game mode's start cooldown. That is the game mode row's `BattleStartCooldown` in milliseconds over 50, or, where the row leaves it empty, the global `LOGIC_BATTLE_START_COOLDOWN` over 50. Ladder and Ranked1v1_NewArena leave the column empty and the global is 4500 ms in 16.402.18, 16.402.19, 16.402.21 and 16.635.3. So a play can be given from tick counter 90 (4.5 seconds) and runs at 110 at the earliest.
 
   The play checks it among its own gates, after the card's hand slot and before the elixir, with code 22. It does so in the client's try at the giving, so a card dropped earlier is refused and nothing is sent, and again at the run. An ability command has no such gate. Whether the screen also holds the hand back during this time is not established.
 

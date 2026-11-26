@@ -6,14 +6,12 @@
 
 package org.crforge.core.battle.data;
 
-import static org.crforge.core.util.ValidationUtils.checkArgument;
 import static org.crforge.core.util.ValidationUtils.checkState;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,8 +23,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.stream.Stream;
-import org.crforge.core.pathfinding.grid.TileMap;
-import org.crforge.core.pathfinding.grid.TileMapLoader;
 
 /**
  * A folder of game tables: one file per table of the game's data, in the game's own names and
@@ -68,13 +64,6 @@ public final class GameTables {
 
   private final String version;
   private final String contentSha;
-
-  /**
-   * The tile map files the table build writes beside the tables, by the path a location names them
-   * by, as text: each read as the tables are, and made a map when asked for ({@link #tileMap}).
-   */
-  private final Map<String, String> tileMaps;
-
   private final Map<String, GameTable> tables;
   private final Map<String, GameAction> actions;
 
@@ -85,9 +74,7 @@ public final class GameTables {
       String version,
       String contentSha,
       Map<String, GameTable> tables,
-      Map<String, GameAction> actions,
-      Map<String, String> tileMaps) {
-    this.tileMaps = tileMaps;
+      Map<String, GameAction> actions) {
     this.version = version;
     this.contentSha = contentSha;
     this.tables = tables;
@@ -158,7 +145,7 @@ public final class GameTables {
       }
     }
     checkState(version != null, () -> "no game tables in " + folder);
-    return new GameTables(version, contentSha, tables, actions, tileMaps(folder));
+    return new GameTables(version, contentSha, tables, actions);
   }
 
   private static List<Path> files(Path folder) {
@@ -245,45 +232,6 @@ public final class GameTables {
 
   /** The class of a buff row, which a buff written inline is too. */
   private static final String INLINE_BUFF_CLASS = "LogicCharacterBuffData";
-
-  /**
-   * The tile map a location names as its tile data ({@code TileDataFileName}, a path such as {@code
-   * tilemaps/tilemap.csv}), as the table build writes it beside the tables: the game's map file of
-   * that data version, read as the tables are and made a map each time it is asked for.
-   *
-   * @param path the path the location names, relative to the tables' folder
-   * @return the map
-   * @throws IllegalArgumentException for a path outside the folder or a file that is not there
-   */
-  public TileMap tileMap(String path) {
-    String text = tileMaps.get(path);
-    checkArgument(text != null, () -> "no tile map " + path + " beside the game tables");
-    return TileMapLoader.parseGameFile(text, path);
-  }
-
-  /** The folder under the tables' that holds the tile maps, as the locations name them. */
-  private static final String TILE_MAPS = "tilemaps";
-
-  /**
-   * The text of every tile map file beside a folder of tables, by its path from the folder ({@code
-   * tilemaps/<name>.csv}); none when the folder holds no tile maps.
-   */
-  private static Map<String, String> tileMaps(Path folder) {
-    Path maps = folder.resolve(TILE_MAPS);
-    Map<String, String> read = new TreeMap<>();
-    if (!Files.isDirectory(maps)) {
-      return read;
-    }
-    try (Stream<Path> listing = Files.list(maps)) {
-      for (Path file : listing.filter(p -> p.getFileName().toString().endsWith(".csv")).toList()) {
-        String path = TILE_MAPS + "/" + file.getFileName();
-        read.put(path, Files.readString(file, StandardCharsets.UTF_8));
-      }
-    } catch (IOException e) {
-      throw new UncheckedIOException("Failed to read the tile maps in " + maps, e);
-    }
-    return read;
-  }
 
   /** The data version every table belongs to. */
   public String version() {

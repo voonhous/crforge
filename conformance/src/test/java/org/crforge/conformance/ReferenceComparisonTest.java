@@ -78,41 +78,6 @@ class ReferenceComparisonTest {
     assertThat(result.comparedSteps()).isEqualTo(5);
   }
 
-  /** A trace of a team battle: four sides, entities of sides 0 to 3, the winner a team. */
-  private static List<ObjectNode> teamRows(int steps) {
-    List<ObjectNode> rows = rows(steps);
-    for (ObjectNode row : rows) {
-      row.put("avatar_count", 4);
-      row.put("winner", 1);
-      ArrayNode entities = (ArrayNode) row.path("entities");
-      ArrayNode sides = row.putArray("sides");
-      for (int side = 0; side < 4; side++) {
-        entities.addObject().put("id", 10 + side).put("side", side).put("x", 1000 * side);
-        sides.addObject().put("side", side).put("elixir", 60000 + side);
-      }
-    }
-    return rows;
-  }
-
-  @Test
-  void aTeamBattlesTraceIsComparedAsAnyOther() throws IOException {
-    byte[] reference = trace(teamRows(5));
-    List<ObjectNode> changed = teamRows(5);
-    ((ObjectNode) changed.get(4).path("sides").get(3)).put("elixir", 1);
-    byte[] java = trace(changed);
-
-    ReferenceComparison.Result equal =
-        ReferenceComparison.compare(
-            manifest(reference, 5), reference, manifest(reference, 5), reference);
-    ReferenceComparison.Result mismatch =
-        ReferenceComparison.compare(manifest(reference, 5), reference, manifest(java, 5), java);
-
-    assertThat(equal.outcome()).isEqualTo(ReferenceComparison.DIAGNOSTIC_MATCH);
-    assertThat(mismatch.outcome()).isEqualTo(ReferenceComparison.MISMATCH);
-    assertThat(mismatch.firstDivergentTick()).isEqualTo(4);
-    assertThat(mismatch.difference().path("path").asText()).isEqualTo("$.sides[3].elixir");
-  }
-
   @Test
   void aChangedValueIsAMismatchAtItsObservationWithItsPathAndBothValues() throws IOException {
     List<ObjectNode> run = rows(5);

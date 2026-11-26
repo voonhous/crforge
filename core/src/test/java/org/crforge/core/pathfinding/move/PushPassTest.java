@@ -9,8 +9,6 @@ package org.crforge.core.pathfinding.move;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import org.crforge.core.battle.GameData;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
@@ -107,94 +105,6 @@ class PushPassTest {
   void theOppositeSideIsPushedTheOtherWayOutOfACoincidentPosition() {
     owner.setSide(1);
     queries.ownerSide = 1;
-
-    run(List.of(neighbour(4, 3500, 10000, 0, 12, 1000, false)));
-
-    assertThat(component.getPushY()).isEqualTo(300);
-  }
-
-  /** The flag bits as the tables number the game tags. */
-  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
-
-  private static void flag(GridEntity entity, long bits) {
-    entity.setFlagBits(BITS);
-    entity.setFlags(bits);
-  }
-
-  @Test
-  @DisplayName(
-      "a partner side's neighbour is an ally, by team: a unit not pushed by allies skips it, one"
-          + " not pushed by enemies takes its push")
-  void aPartnerSideNeighbourIsAnAlly() {
-    flag(owner, BITS.noPushedByAlly());
-    GridEntity partner = neighbour(2, 3700, 10000, 2, 6, 500, true);
-    partner.setFlagBits(BITS);
-
-    run(List.of(partner));
-    assertThat(component.getPushCount()).isZero();
-
-    setUp();
-    flag(owner, BITS.noPushedByEnemy());
-    run(List.of(partner));
-    assertThat(component.getPushX()).isEqualTo(-300);
-    assertThat(component.getPushCount()).isEqualTo(1);
-  }
-
-  @Test
-  @DisplayName(
-      "a partner side's neighbour pushes by the ally flag: one that does not push allies holds"
-          + " its ground, one that does not push enemies pushes")
-  void aPartnerSideNeighbourPushesByTheAllyFlag() {
-    owner.setFlagBits(BITS);
-    GridEntity enemyOnly = neighbour(2, 3700, 10000, 2, 6, 500, true);
-    flag(enemyOnly, BITS.noPushedByEnemy());
-    run(List.of(enemyOnly));
-    assertThat(component.getPushX()).isEqualTo(-300);
-
-    setUp();
-    owner.setFlagBits(BITS);
-    GridEntity allyOnly = neighbour(2, 3700, 10000, 2, 6, 500, true);
-    flag(allyOnly, BITS.noPushedByAlly());
-    GridEntity sideZero = neighbour(2, 3700, 10000, 0, 6, 500, true);
-    flag(sideZero, BITS.noPushedByAlly());
-    run(List.of(allyOnly));
-    int partnerPush = component.getPushX();
-    setUp();
-    owner.setFlagBits(BITS);
-    run(List.of(sideZero));
-    assertThat(partnerPush).as("as a side 0 ally's").isEqualTo(component.getPushX());
-  }
-
-  @Test
-  @DisplayName("a partner side's neighbour without a no-push flag pushes as any ally does")
-  void aPartnerSideNeighbourWithoutFlagsPushes() {
-    owner.setFlagBits(BITS);
-    GridEntity partner = neighbour(2, 3700, 10000, 2, 6, 500, true);
-    partner.setFlagBits(BITS);
-
-    run(List.of(partner));
-
-    assertThat(component.getPushX()).isEqualTo(-300);
-    assertThat(component.getPushCount()).isEqualTo(1);
-  }
-
-  @Test
-  @DisplayName("a side 2 unit sharing a position separates as side 0, both of team 0")
-  void aSideTwoUnitSharingAPositionSeparatesAsSideZero() {
-    owner.setSide(2);
-    queries.ownerSide = 2;
-
-    run(List.of(neighbour(4, 3500, 10000, 0, 12, 1000, false)));
-
-    assertThat(component.getPushX()).isZero();
-    assertThat(component.getPushY()).isEqualTo(-300);
-  }
-
-  @Test
-  @DisplayName("a side 3 unit sharing a position separates as side 1, both of team 1")
-  void aSideThreeUnitSharingAPositionSeparatesAsSideOne() {
-    owner.setSide(3);
-    queries.ownerSide = 3;
 
     run(List.of(neighbour(4, 3500, 10000, 0, 12, 1000, false)));
 

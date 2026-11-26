@@ -55,11 +55,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " without the death handler, held by card_Tombstone. Refused: a death whose row sets"
             + " a column of the slot not modelled, and a death hook with no attacker or no pending"
             + " pass ahead of it. Left out: the elixir a death gives. Not modelled: the copy of the"
-            + " attacker the game makes as a death hook's cause. In a team battle the fall of a"
-            + " team's pooled king runs the death slots of its king of side 0 or 1, of its king of"
-            + " side 2 or 3, whose own hit points go to 0, and of its middle piece, held by the"
-            + " team battle reference battles tvt_end_king_half0, tvt_end_king_half2 and"
-            + " tvt_tiebreak_no_princess.")
+            + " attacker the game makes as a death hook's cause.")
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class EntityDeaths {
 
@@ -124,41 +120,10 @@ public final class EntityDeaths {
    */
   void entityDied(WorldEntity dying, BattleEntity attacker, int killingSide) {
     UnitData data = dying.getData();
-    if (world.kingsPooled() && data.king()) {
-      poolFell(dying);
-    } else {
-      deathSlot(dying, data);
-    }
+    deathSlot(dying, data);
     killedDone(dying, attacker);
     killedHook(dying, attacker, data, killingSide);
     deathReward(dying, data, killingSide);
-  }
-
-  /**
-   * The death slots of a team's pool of hit points as it falls, in a team battle whose kings are
-   * pooled ({@link BattleWorld#kingsPooled()}): whichever half of the team's king the killing hit
-   * struck, the holder's death slot, the king of side 0 or 1, then its partner's king's, whose own
-   * hit points the slot sets to 0, then the team's middle piece's. The death handler that follows
-   * is the struck king's. A middle piece the tiebreaker's clearing has removed has no slot to run.
-   *
-   * @param struck the king the killing hit struck, either half
-   */
-  private void poolFell(WorldEntity struck) {
-    WorldEntity holder = world.poolHolder(struck);
-    TowerEntity half = world.partnerKing(holder);
-    deathSlot(holder, holder.getData());
-    if (half != null) {
-      deathSlot(half, half.getData());
-      // The character death slot sets the dying king's own hit points to 0; the holder's are the
-      // pool's, at 0 already.
-      half.getHitPoints().setHitPoints(0);
-      half.refreshHitPoints();
-    }
-    // The middle piece only while it is in the battle: the tiebreaker's clearing removes it.
-    WorldEntity middle = world.findTeamMiddle(BattleWorld.team(holder.side()));
-    if (middle != null) {
-      deathSlot(middle, middle.getData());
-    }
   }
 
   /**

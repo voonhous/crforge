@@ -75,33 +75,6 @@ public record StateVisitConfig(
   }
 
   /**
-   * This configuration for a team's middle piece, the object a team battle's king stands beside,
-   * which the game knows by its row's name: it stays when it has no hit points, where any other
-   * object without them is removed.
-   *
-   * @param middle true for the middle piece
-   */
-  public StateVisitConfig withKingTowerMiddle(boolean middle) {
-    return new StateVisitConfig(
-        deployTimeMs,
-        dashLandingTimeMs,
-        dashImmuneToDamageTimeMs,
-        flyingHeight,
-        ingamePathfindEndsInDeploy,
-        spawnPathfindMorph,
-        onIngamePathfindStopAction,
-        kamikaze,
-        middle,
-        neutralObject,
-        hideBeforeFirstHit,
-        hidesWhenNotAttacking,
-        deployTimeAffectedByCharacterSpeed,
-        abilityPresent,
-        abilityHoldsState,
-        abilityStateFlags);
-  }
-
-  /**
    * This configuration with the morph a unit takes as it arrives at its spawn destination.
    *
    * @param morph true for a unit that morphs as it surfaces

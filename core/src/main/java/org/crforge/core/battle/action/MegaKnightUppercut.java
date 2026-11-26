@@ -31,9 +31,7 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the start's target, the push point by the nearest tower of the"
-            + " target's team and then the king facing the unit's team (in a team battle the"
-            + " team's princess towers held by tvt2_uppercut_megaknight_s3, a king's push from a"
-            + " side 2 unit refused), the push through the entry past the"
+            + " target's side and then the opposite king, the push through the entry past the"
             + " gates, the action on the target, the blend cleared after a push that went"
             + " through, the wait for the follow-up delay, the end with another target in range"
             + " or none, the mark of the target in the targeting queue and the target forgotten"
