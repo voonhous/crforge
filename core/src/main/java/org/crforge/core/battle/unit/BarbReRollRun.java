@@ -150,6 +150,7 @@ final class BarbReRollRun extends ActionInstance {
    * @return the summoner
    */
   private TowerEntity facingSummoner() {
+    unit.world().refuseInTeamBattle(row.name() + "'s turned roll toward the summoner facing it");
     TowerEntity summoner = unit.world().kingTower(WorldEntity.opposing(unit.side()));
     if (summoner == null) {
       throw new UnsupportedOperationException(

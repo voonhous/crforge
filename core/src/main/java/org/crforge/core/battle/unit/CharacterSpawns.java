@@ -926,6 +926,7 @@ public final class CharacterSpawns {
     GridEntity view = unit.getView();
     int startX = view.getX();
     int startY = view.getY();
+    world.refuseInTeamBattle(unit.name() + "'s warp, mirrored by its side,");
     int sign = unit.side() == 0 ? 1 : -1;
     int x = columns.warpX() * sign + startX;
     int y = columns.warpY() * sign + startY;
