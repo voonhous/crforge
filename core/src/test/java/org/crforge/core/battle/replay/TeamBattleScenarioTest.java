@@ -11,7 +11,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -231,18 +233,232 @@ class TeamBattleScenarioTest {
   }
 
   @Test
-  void refusesPartnersPrincessTowersAtDifferentLevels() {
+  void standsEachPrincessTowerAtItsOwnSelectionsLevelWhateverItsPartners() {
     ObjectNode scenario = ScenarioItems.fitted(teamKnight(), tables);
     ObjectNode selection = (ObjectNode) scenario.path("battle").path("deck2").path("sc").get(0);
     selection.put("l", selection.path("l").asInt() + 1);
 
-    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
-        .isInstanceOfSatisfying(
-            UnsupportedScenarioException.class,
-            e -> {
-              assertThat(e.feature()).startsWith("partners' princess towers at levels ");
-              assertThat(e.input()).isEqualTo("battle.deck2.sc[0].l");
-            });
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+    int level = plan.towers().get(0).level();
+
+    // Side 2's princess tower one level above its partner's, as its own selection gives it; the
+    // kings keep their own or their partner's level, which the selection does not set.
+    assertThat(plan.raisedTowers())
+        .extracting(t -> t.level())
+        .containsExactly(level, level, level + 1, level);
+    assertThat(plan.raisedTowers())
+        .extracting(t -> t.kingLevel())
+        .containsOnly(plan.towers().get(0).kingLevel());
+    Standard1v1Battle battle = ReplayBattle.build(tables, plan);
+    assertThat(battle.getBattle().getHolder().entities())
+        .filteredOn(e -> e instanceof WorldEntity world && !world.getData().king())
+        .filteredOn(e -> ((WorldEntity) e).getHitPoints() != null)
+        .extracting(e -> ((WorldEntity) e).side() + ":" + ((WorldEntity) e).level())
+        .containsExactly("0:" + level, "1:" + level, "2:" + (level + 1), "3:" + level);
+  }
+
+  @Test
+  void placesEachBuiltTowerSelectionFromItsTeamSpawnGroup() {
+    for (String selection : ReplayScenario.BUILT_TOWER_SELECTIONS) {
+      GameRow card = tables.table("support_cards").row(selection);
+      String group = card.string(ReplayScenario.TEAM_SPAWN_GROUP);
+      ObjectNode scenario = ScenarioItems.fitted(teamKnight(), tables);
+      // Side 2 takes the selection; the others keep the princess towers.
+      ObjectNode entry = (ObjectNode) scenario.path("battle").path("deck2").path("sc").get(0);
+      entry.put("d", dataId("support_cards", selection));
+
+      ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+      Standard1v1Battle battle = ReplayBattle.build(tables, plan);
+
+      assertThat(plan.towers().get(2).spawnGroup()).as(selection).isEqualTo(group);
+      // Side 2's towers are its group's rows, in the group's order.
+      List<String> rows =
+          battle.getBattle().getHolder().entities().stream()
+              .filter(e -> e instanceof WorldEntity world && world.side() == 2)
+              .map(e -> ((WorldEntity) e).getData().name())
+              .toList();
+      List<String> objects = new ArrayList<>();
+      tables
+          .table("spawn_groups")
+          .row(group)
+          .value("Objects")
+          .forEach(object -> objects.add(object.path("Data").asText()));
+      assertThat(rows).as(selection).isEqualTo(objects);
+    }
+  }
+
+  @Test
+  void raisesEachPrincessTowerAndDeckCardToTheCardLevelMinimumButNotTheKings() {
+    ObjectNode scenario = teamKnight();
+    addKnight(scenario, 3, 240);
+    ScenarioItems.fitted(scenario, tables);
+    ScenarioPlan given = new ReplayScenario(tables).translate(scenario);
+    int level = given.towers().get(0).level();
+    int kingLevel = given.raisedTowers().get(0).kingLevel();
+    int knight = given.plays().get(0).level();
+    int minimum = Math.max(level, knight) + 2;
+    ((ObjectNode) scenario.path("battle")).put(ReplayFormat.CARD_LEVEL_MIN_FIELD, minimum);
+    // Side 2's Knight is played at the raised level, side 0's at its own.
+    ObjectNode raisedPlay = (ObjectNode) scenario.path("cmd").get(1).path("c").path("sel");
+    int packed = raisedPlay.path("pd").asInt();
+    int field = (packed >>> ReplayScenario.ITEM_LEVEL_SHIFT) & ReplayScenario.ITEM_LEVEL_MASK;
+    raisedPlay.put("pd", packed + ((minimum - 1 - field) << ReplayScenario.ITEM_LEVEL_SHIFT));
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    assertThat(plan.cardLevelMinimum()).isEqualTo(minimum);
+    // Every princess tower at the minimum; every king at its own or its partner's, not raised.
+    assertThat(plan.raisedTowers()).extracting(t -> t.level()).containsOnly(minimum);
+    assertThat(plan.raisedTowers()).extracting(t -> t.kingLevel()).containsOnly(kingLevel);
+    assertThat(plan.raisedDeckLevels())
+        .allSatisfy(
+            levels -> assertThat(IntStream.of(levels).min().orElseThrow()).isEqualTo(minimum));
+    assertThat(plan.plays()).extracting(ScenarioPlan.Play::level).containsExactly(knight, minimum);
+  }
+
+  @Test
+  void playsATeamBattleOnEachTeamMapItsLocationNames() {
+    for (String path : ReplayScenario.TEAM_TILE_MAPS) {
+      // The first team location of the tables whose tile data is the map.
+      String location =
+          tables.table("locations").rows().stream()
+              .filter(row -> row.name().startsWith("TeamVsTeam"))
+              .filter(row -> path.equals(row.string("TileDataFileName")))
+              .map(GameRow::name)
+              .findFirst()
+              .orElseThrow();
+      ObjectNode scenario = ScenarioItems.fitted(teamKnight(), tables);
+      ((ObjectNode) scenario.path("battle")).put("location", dataId("locations", location));
+
+      ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+      Standard1v1Battle battle = ReplayBattle.build(tables, plan);
+
+      assertThat(plan.tileMap()).as(location).isEqualTo(path);
+      TileMap map = tables.tileMap(path);
+      TileMap played = battle.getWorld().getTileMap();
+      for (int row = 0; row < map.height(); row++) {
+        for (int col = 0; col < map.width(); col++) {
+          assertThat(played.bits(col, row)).as(location).isEqualTo(map.bits(col, row));
+        }
+      }
+    }
+  }
+
+  /**
+   * The level the Friendly card level adjustment stands kings and towers at: the SummonerLevel of
+   * the exp level the global TOURNAMENT_MAX_EXP_LEVEL names, read from the tables.
+   */
+  private static int friendlyLevel() {
+    int expLevel =
+        tables
+            .table("globals")
+            .row(ReplayScenario.TOURNAMENT_MAX_EXP_LEVEL)
+            .intValue("NumberValue");
+    return tables.table(ReplayScenario.EXP_LEVELS).rows().stream()
+        .filter(row -> row.index() == expLevel - 1)
+        .findFirst()
+        .orElseThrow()
+        .intValue("SummonerLevel");
+  }
+
+  @Test
+  void playsTheFriendlyTeamRowAtItsOwnLevelsOnItsOwnTimeline() {
+    GameRow friendly =
+        tables.table(ReplayScenario.GAME_MODES).row(LadderMatch.FRIENDLY_TEAM_GAME_MODE);
+    assertThat(friendly.string(ReplayScenario.PLAYERS)).isEqualTo(ReplayScenario.TEAM_PLAYERS);
+    ObjectNode scenario = ScenarioItems.fitted(teamKnight(), tables);
+    ((ObjectNode) scenario.path("battle"))
+        .put("gamemode", dataId(ReplayScenario.GAME_MODES, friendly.name()));
+    int given =
+        new ReplayScenario(tables)
+            .translate(ScenarioItems.fitted(teamKnight(), tables))
+            .plays()
+            .get(0)
+            .level();
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    assertThat(plan.gameMode()).isEqualTo(friendly.name());
+    // Every king and princess tower at the Friendly level, whatever the replay's levels.
+    int level = friendlyLevel();
+    assertThat(plan.raisedTowers()).extracting(t -> t.kingLevel()).containsOnly(level);
+    assertThat(plan.raisedTowers()).extracting(t -> t.level()).containsOnly(level);
+    // The deck holds every card at its rarity's tournament level; the play runs at its item's
+    // level, here the deck card's as the replay writes it.
+    String knight = plan.plays().get(0).card();
+    GameRow card = tables.table("spells_characters").row(knight);
+    GameRow rarity = tables.table("rarities").row(card.string("Rarity"));
+    int tournament =
+        rarity.intValue(ReplayScenario.TOURNAMENT_LEVEL_INDEX)
+            + rarity.intValue("RelativeLevel")
+            + 1;
+    assertThat(plan.deckLevels().get(0)[plan.decks().get(0).indexOf(knight)]).isEqualTo(tournament);
+    assertThat(plan.plays().get(0).level()).isEqualTo(given).isNotEqualTo(tournament);
+    // The match runs on the row's own timeline.
+    Standard1v1Battle battle = ReplayBattle.build(tables, plan);
+    assertThat(battle.getMatch().getTimeline().row())
+        .isEqualTo(battle.getWorld().getRecords().gameModeTimeline(friendly.name()));
+  }
+
+  @Test
+  void refusesAPlacementThatReadsACellWithBitsBeyondTheModelledOnes() {
+    // A team map whose published cells set a bit above the seven the routing models.
+    String path =
+        ReplayScenario.TEAM_TILE_MAPS.stream()
+            .filter(p -> unmodelledCell(tables.tileMap(p)) != null)
+            .findFirst()
+            .orElseThrow();
+    int[] cell = unmodelledCell(tables.tileMap(path));
+    List<Standard1v1Battle.Towers> sides = new ArrayList<>();
+    String group =
+        tables
+            .table("support_cards")
+            .row(ReplayScenario.TEAM_TOWER_SELECTION)
+            .string(ReplayScenario.TEAM_SPAWN_GROUP);
+    for (int side = 0; side < 4; side++) {
+      sides.add(
+          new Standard1v1Battle.Towers(
+              group, Standard1v1Battle.DEFAULT_LEVEL, Standard1v1Battle.DEFAULT_LEVEL));
+    }
+    // The card the test's battle plays.
+    String card =
+        new ReplayScenario(tables)
+            .translate(ScenarioItems.fitted(teamKnight(), tables))
+            .plays()
+            .get(0)
+            .card();
+    Standard1v1Battle battle = new Standard1v1Battle(tables, sides, false, tables.tileMap(path));
+    // A play asked for on the cell: the placement reads it.
+    battle.play(
+        20,
+        battle.getWorld().getRecords().card(card),
+        Standard1v1Battle.DEFAULT_LEVEL,
+        0,
+        cell[0] * TileMap.CELL_UNITS + TileMap.CELL_UNITS / 2,
+        cell[1] * TileMap.CELL_UNITS + TileMap.CELL_UNITS / 2,
+        "k");
+
+    assertThatThrownBy(
+            () -> {
+              while (battle.getBattle().getTick() < 40) {
+                battle.getBattle().step();
+              }
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("(" + cell[0] + ", " + cell[1] + ")")
+        .hasMessageContaining("a placement");
+  }
+
+  /** The first cell of a map that sets a bit above the modelled seven, column then row, or null. */
+  private static int[] unmodelledCell(TileMap map) {
+    for (int row = 0; row < map.height(); row++) {
+      for (int col = 0; col < map.width(); col++) {
+        if (map.unmodelledBits(col, row) != 0) {
+          return new int[] {col, row};
+        }
+      }
+    }
+    return null;
   }
 
   @Test
@@ -251,7 +467,7 @@ class TeamBattleScenarioTest {
     String other =
         tables.table("locations").rows().stream()
             .filter(row -> row.name().startsWith("TeamVsTeam"))
-            .filter(row -> !ReplayScenario.TEAM_TILE_MAP.equals(row.string("TileDataFileName")))
+            .filter(row -> !ReplayScenario.TEAM_TILE_MAPS.contains(row.string("TileDataFileName")))
             .map(GameRow::name)
             .findFirst()
             .orElseThrow();
