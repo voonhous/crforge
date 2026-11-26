@@ -5,7 +5,7 @@ description: crforge is an open source, deterministic Clash Royale battle simula
 
 # crforge
 
-crforge is an open source, deterministic Clash Royale battle simulator in Java, with a reinforcement learning environment on top of it. Its engine, the battle core, plays a Ladder 1v1 battle on the standard arena, and a 2v2 team battle of four players on its location's map, in steps of 50 ms of game time, 20 steps a second, on the game's own tables of one data version. The same inputs on the same tables give the same battle, step for step. Evolutions, heroes and champions are in scope.
+crforge is an open source, deterministic Clash Royale battle simulator in Java, with a reinforcement learning environment on top of it. Its engine, the battle core, plays a Ladder 1v1 battle on the standard arena in steps of 50 ms of game time, 20 steps a second, on the game's own tables of one data version. The same inputs on the same tables give the same battle, step for step. Evolutions, heroes and champions are in scope.
 
 The source, the issues and the releases are on GitHub at [voonhous/crforge](https://github.com/voonhous/crforge), under the Apache License 2.0.
 

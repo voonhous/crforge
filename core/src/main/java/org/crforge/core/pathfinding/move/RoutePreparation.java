@@ -97,11 +97,9 @@ public final class RoutePreparation {
     boolean overlayChanged;
     if (globals.friendlyOnlyOcclusions()) {
       chain.mark("owner_side");
-      // The flag is the owner's team's: its side's in a battle of two, the one sides 0 and 2, or
-      // sides 1 and 3, share in a team battle. The team is compared without a sign, so anything
-      // outside 0..1, the neutral team or a negative one, reads as unchanged.
-      int team = CellGrid.team(queries.ownerSide());
-      overlayChanged = Integer.compareUnsigned(team, 1) <= 0 && grid.getChangeFlags()[team] != 0;
+      int side = queries.ownerSide();
+      // The side is compared without a sign, so anything outside 0..1 reads as unchanged.
+      overlayChanged = Integer.compareUnsigned(side, 1) <= 0 && grid.getChangeFlags()[side] != 0;
     } else {
       overlayChanged = grid.getChangeFlags()[0] != 0 || grid.getChangeFlags()[1] != 0;
     }

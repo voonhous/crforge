@@ -71,10 +71,7 @@ public final class SpawnCharacters extends RowAction {
     // rows of its column toward the side's own end.
     SpawnPerform.PlacementSearch placement =
         spawn.validatePlacementAsBuilding() ? owner.buildingPlacement(spawn.spawnData()) : null;
-    // A team battle reads a location's side flag by team: side 2 offsets as side 0, side 3 as
-    // side 1.
-    SpawnArguments arguments =
-        SpawnPerform.arguments(spawn, owner, cause, false, owner.inTeamBattle(), placement);
+    SpawnArguments arguments = SpawnPerform.arguments(spawn, owner, cause, false, false, placement);
     if (arguments.source() == null) {
       throw new UnsupportedOperationException(name() + " has no source to spawn from");
     }

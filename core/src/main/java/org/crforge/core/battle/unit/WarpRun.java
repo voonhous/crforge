@@ -22,8 +22,8 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
  *
  * <p><b>The start</b>, as the hand-over lists it: the destination is the target's position, or the
  * last position the hand-over recorded for it when there is none; the row's offsets are added, the
- * length one negated for side 1 (by team in a team battle); the pending damage on its way to the
- * unit is reset when the row asks for it.
+ * length one negated for side 1; the pending damage on its way to the unit is reset when the row
+ * asks for it.
  *
  * <p><b>Each step</b>, from the holder's run pass: a target still in the battle is followed, the
  * destination recomputed from its position and the offsets. With the squared distance left beyond
@@ -50,10 +50,8 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " reset, each step's follow, speed and braking in 32-bit arithmetic, the step, the"
             + " five tags and the turn, the arrival's placement, route reset, kept target and end"
             + " action, and the target's leave notice; held by"
-            + " ability_hero_mega_minion_vs_musketeer; the team battle's run in"
-            + " tvt2_warp_megaminion_s2 and _s3, whose row's offsets are 0. Refused: a side 2"
-            + " unit's offset along the length in a team battle, its team adding it and its side"
-            + " taking it off. Not modelled: the two effects, which only show something.")
+            + " ability_hero_mega_minion_vs_musketeer. Not modelled: the two effects, which only"
+            + " show something.")
 final class WarpRun extends ActionInstance {
 
   /** The tags each step raises for the next step. */
@@ -105,30 +103,11 @@ final class WarpRun extends ActionInstance {
     }
   }
 
-  /**
-   * The row's offsets onto the destination, the length one negated for a unit not of team 0: side
-   * 1, and in a team battle side 3, side 2 being team 0. Refused: a team battle's side 2 unit with
-   * an offset along the length, which no recording holds.
-   */
+  /** The row's offsets onto the destination, the length one negated for side 1. */
   private void addOffsets() {
-    int side = unit.side();
-    boolean teamZero = BattleWorld.team(side) == 0;
-    // A team battle's side 2: its team adds the offset, its side as written takes it off. Every
-    // shipped flying warp's offsets are 0, so no recorded team battle holds the sign.
-    if (flight.offsetY() != 0 && teamZero != (side == 0) && unit.world().teamBattle()) {
-      throw new UnsupportedOperationException(
-          row.name()
-              + "'s flying warp of "
-              + unit.name()
-              + " of side "
-              + side
-              + " with an offset along the length of "
-              + flight.offsetY()
-              + " in a team battle, which its team adds as side 0 and its side takes off as"
-              + " side 1, which no recorded team battle holds, is not modelled");
-    }
+    unit.world().refuseInTeamBattle(unit.name() + "'s warp offsets, mirrored by its side,");
     destX += flight.offsetX();
-    destY += teamZero ? flight.offsetY() : -flight.offsetY();
+    destY += unit.side() == 0 ? flight.offsetY() : -flight.offsetY();
   }
 
   @Override

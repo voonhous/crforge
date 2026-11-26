@@ -102,7 +102,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
     note =
         "Settled: the index and the overlay are rebuilt in the pre-pass from the id-ordered"
             + " snapshot of the arena entities and retired in the post-pass, the overlay's"
-            + " per-team change flags are copied once per tick, a projectile is in neither and is"
+            + " per-side change flags are copied once per tick, a projectile is in neither and is"
             + " handed to the holder in the tick of its launch, and a dead entity leaves the"
             + " holder in the closing cleanup of the tick it dies - the king tower excepted,"
             + " which never does - when every arena entity is told at once and its default target"
@@ -1237,25 +1237,6 @@ public class BattleWorld implements HolderPasses {
     return out;
   }
 
-  /**
-   * The princess towers of a team still in the battle, in the order the holder lists them: both
-   * partners' in a team battle, the side's own in a battle of two, whose teams are its sides. A
-   * destroyed one is listed until the cleanup that removes it.
-   *
-   * @param team 0 or 1
-   */
-  List<TowerEntity> teamPrincessTowers(int team) {
-    List<TowerEntity> out = new ArrayList<>();
-    for (BattleEntity entity : holder.entities()) {
-      if (entity instanceof TowerEntity tower
-          && tower.getData().summonerTower()
-          && team(tower.side()) == team) {
-        out.add(tower);
-      }
-    }
-    return out;
-  }
-
   /** The players of a battle of one player a side, sides 0 and 1. */
   public static final int ONE_A_SIDE = 2;
 
@@ -2117,9 +2098,8 @@ public class BattleWorld implements HolderPasses {
     boolean homing = sourceTarget != null && source.getData().homing();
     int aimX = homing ? sourceTarget.getView().getX() : source.getAimX();
     int aimY = homing ? sourceTarget.getView().getY() : source.getAimY();
-    // No side or team turns it: in a team battle it is thrown as in a battle of two, for the cast
-    // projectile's side, from where that projectile stands.
     ProjectileEntity projectile = new ProjectileEntity(this, data, source.side());
+    refuseInTeamBattle(action + " thrown mirrored across the width");
     projectile.castMirrored(source, tileMap.width() * TileMap.CELL_UNITS - aimX, aimY);
     holder.add(projectile);
     registrationPass(projectile);

@@ -10,7 +10,6 @@ import java.util.List;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
-import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.math.FixedMath;
 
@@ -38,10 +37,6 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * interaction entirely. Individual neighbours are skipped when they are on a different height
  * layer, take no part in contact, are not alive, or carry the flag that forbids pushing this unit
  * from their side.
- *
- * <p>The pass tells allies from enemies, and separates coincident units, by team, as the game does:
- * a team battle's partners (sides 0 and 2, 1 and 3) are allies. In a battle of two the team is the
- * side.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -56,10 +51,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " run, the walk behind a unit's own king and six placement runs, all removed: a"
             + " tower is loaded at a mass of 20, held by the records' own test, and its push on a"
             + " unit inside its reach is held by no run here. The static test (no movement"
-            + " component), a radius above 500 and the single-axis copy by its own tests. The"
-            + " coincident case by team, held by tvt2_warp_elitearcher_s2 and"
-            + " tvt2_warp_darkprince_s2; partners as allies by team, held under the"
-            + " no-pushed-by-ally flag by tvt2_nopush_partners_s0s2 and _s1s3.")
+            + " component), a radius above 500 and the single-axis copy by its own tests.")
 public final class PushPass {
 
   /** Extra reach, in game units, the neighbour query adds to the unit's collision radius. */
@@ -145,11 +137,8 @@ public final class PushPass {
       chain.mark("neighbour_mass");
       int otherMass = other.getMass();
       chain.mark("neighbour_side");
-      // An ally or an enemy by team: a team battle's partners, sides 0 and 2 or 1 and 3, are
-      // allies. In a battle of two the team is the side.
-      boolean enemy = CellGrid.team(other.getSide()) != CellGrid.team(side);
       long mask;
-      if (enemy) {
+      if (other.getSide() != side) {
         if (noEnemyPush) {
           continue;
         }
@@ -194,8 +183,7 @@ public final class PushPass {
       int squared = dx * dx + dy * dy;
       if (squared == 0) {
         chain.mark("owner_side_zero");
-        // By team: team 0 (sides 0 and 2) separates back down the length, any other team up it.
-        dy = (queries.ownerTeamZero() & 1) != 0 ? -1 : 1;
+        dy = (queries.ownerSideZero() & 1) != 0 ? -1 : 1;
         squared = 1;
       }
       if (squared > reach * reach) {

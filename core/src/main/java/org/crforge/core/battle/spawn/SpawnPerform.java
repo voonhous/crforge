@@ -47,9 +47,8 @@ import org.crforge.core.pathfinding.grid.TileMap;
         "Settled and held by the recorded perform cases: the source, both classes' points with the"
             + " side's flips and the expression, no offsets, the block handed to the spawner, and"
             + " the calls after the spawn, in order. Supplied: the placement search a row that"
-            + " asks for a building's placement moves the point by, and the two-against-two test,"
-            + " the team battle's, whose flag by team the recorded team battle"
-            + " tvt2_spawn_location_s2 holds. Not modelled: what the calls after the spawn do.")
+            + " asks for a building's placement moves the point by, and the two-against-two test."
+            + " Not modelled: what the calls after the spawn do.")
 public final class SpawnPerform {
 
   /** Game units per half tile, the unit of the location columns. */

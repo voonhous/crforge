@@ -31,7 +31,7 @@ The four items once listed here as unresolved are implemented:
 
 ## Where the rules run
 
-The battle core's entity tick visits every entity of a snapshot in ascending id, which is creation order within a kind. The towers of a standard battle are created first. Before any component runs, the holder's pre-pass rebuilds the spatial index and the building footprint overlay from the snapshot and copies the per-team change flags (a team is its side in a battle of two; sides 0 and 2, or 1 and 3, in a team battle). Then:
+The battle core's entity tick visits every entity of a snapshot in ascending id, which is creation order within a kind. The towers of a standard battle are created first. Before any component runs, the holder's pre-pass rebuilds the spatial index and the building footprint overlay from the snapshot and copies the per-side change flags. Then:
 
 1. The targeting pass (component slot 0), per entity: the targeting visit, then the resume tail when the visit asked for one.
 2. The movement pass (component slot 1), per entity: the movement visit. It announces route preparation, the route follower, the avoidance handler, the push pass and each displacement, and `MovementChain` runs each pass at the point it is announced so that the passes see each other's writes.

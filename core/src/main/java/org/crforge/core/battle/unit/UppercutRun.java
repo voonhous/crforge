@@ -26,22 +26,21 @@ import org.crforge.core.pathfinding.target.RangeTest;
  * pulled as the row says. As it starts the run keeps the object the unit's targeting component has
  * as its target; an object without a movement component ends the run at once. Its first update
  * pushes that target: the point it is pushed away from stands just behind it on the line from the
- * nearest tower of its own team - the team's princess towers, both partners' in a team battle, then
- * the king facing the unit's team, side 1's for team 0 and side 0's for team 1 - so the push drives
- * it toward that tower, through the pushback entry past every gate of the request; then the row's
- * action is scheduled on it with the unit as the cause, a push the entry took clears the target's
- * avoidance blend unless the row turns that off, the unit carries LOCK_TARGET for one step while
- * the row's LockTargetAfterUppercut is on, and the run waits out the follow-up delay. A target with
- * no movement component switched on, or one already switching lanes (the in-game pathfinding state
- * of a lane switch ability), is not pushed, nothing is scheduled on it, and the run ends; that
- * state is the only one the push point tests, so a target following a removed building is pushed
- * like any other. The run ends too for a target whose tag word holds NO_PUSHBACK, which the
- * uppercut's push entry refuses (no other push asks the entry that): nothing is scheduled on it
- * unless the row's OnlyRunActionOnPushback is off, and the run does not wait. Each later update
- * ends the run when the unit has no target or attacks another one in range; with another target out
- * of range it marks the uppercut's target in its targeting queue, at a priority the queue's flush
- * never takes; then the delay runs down by 50 ms, and the run ends when none is left. A target that
- * leaves the battle is forgotten, and the next update ends the run.
+ * nearest tower of its own side - the side's princess towers, then the king facing the unit's side
+ * - so the push drives it toward that tower, through the pushback entry past every gate of the
+ * request; then the row's action is scheduled on it with the unit as the cause, a push the entry
+ * took clears the target's avoidance blend unless the row turns that off, the unit carries
+ * LOCK_TARGET for one step while the row's LockTargetAfterUppercut is on, and the run waits out the
+ * follow-up delay. A target with no movement component switched on, or one already switching lanes
+ * (the in-game pathfinding state of a lane switch ability), is not pushed, nothing is scheduled on
+ * it, and the run ends; that state is the only one the push point tests, so a target following a
+ * removed building is pushed like any other. The run ends too for a target whose tag word holds
+ * NO_PUSHBACK, which the uppercut's push entry refuses (no other push asks the entry that): nothing
+ * is scheduled on it unless the row's OnlyRunActionOnPushback is off, and the run does not wait.
+ * Each later update ends the run when the unit has no target or attacks another one in range; with
+ * another target out of range it marks the uppercut's target in its targeting queue, at a priority
+ * the queue's flush never takes; then the delay runs down by 50 ms, and the run ends when none is
+ * left. A target that leaves the battle is forgotten, and the next update ends the run.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -59,13 +58,9 @@ import org.crforge.core.pathfinding.target.RangeTest;
             + " run is listed, and LOCK_TARGET for one step after the push only while"
             + " LockTargetAfterUppercut is on (16.402.17 raised NO_ATTACK and NO_MOVE at the start,"
             + " after the push and on each step of the wait); held by BattleUppercutAttractTest."
-            + " In a team battle the target's team's princess towers, held by"
-            + " tvt2_uppercut_megaknight_s3, and the king facing the unit's team, which no"
-            + " recorded team battle reaches. Refused: the start without a current target, which"
-            + " reads the targeting component's previous reference, a push point with no tower or"
-            + " king found, which turns to the facing, a target other than a character with a"
-            + " movement component, and a side 2 unit's push a king would decide, its team facing"
-            + " side 1's king and its side side 0's.")
+            + " Refused: the start without a current target, which reads the targeting component's"
+            + " previous reference, a push point with no tower or king found, which turns to the"
+            + " facing, and a target other than a character with a movement component.")
 final class UppercutRun extends ActionInstance {
 
   /** Milliseconds one update takes off the delay. */
@@ -195,39 +190,11 @@ final class UppercutRun extends ActionInstance {
     }
     int tx = target.getView().getX();
     int ty = target.getView().getY();
-    // The target's team's princess towers, both partners' in a team battle, then the king facing
-    // the unit's team's main king: side 1's for team 0, side 0's for team 1.
-    for (TowerEntity tower : unit.world().teamPrincessTowers(BattleWorld.team(target.side()))) {
+    for (TowerEntity tower : unit.world().princessTowers(target.side())) {
       nearer(tx, ty, tower);
     }
-    int facing = BattleWorld.team(unit.side()) ^ 1;
-    int bySide = WorldEntity.opposing(unit.side());
-    if (facing != bySide && unit.world().teamBattle()) {
-      // A team battle's side 2 unit: its team faces side 1's king, its side as written side 0's.
-      // No recorded team battle has a king nearer than the princess towers, so a push one of the
-      // two would decide is refused.
-      for (int side : new int[] {facing, bySide}) {
-        TowerEntity other = unit.world().kingTower(side);
-        if (other != null && best > squared(tx, ty, other)) {
-          throw new UnsupportedOperationException(
-              row.name()
-                  + " pushes "
-                  + target.name()
-                  + " nearer to the king of side "
-                  + side
-                  + " than to its team's princess towers, where the king facing "
-                  + unit.name()
-                  + " of side "
-                  + unit.side()
-                  + " is side "
-                  + facing
-                  + "'s by team and side "
-                  + bySide
-                  + "'s by side in a team battle, not modelled");
-        }
-      }
-    }
-    TowerEntity king = unit.world().kingTower(facing);
+    unit.world().refuseInTeamBattle(row.name() + "'s push toward the king facing " + unit.name());
+    TowerEntity king = unit.world().kingTower(WorldEntity.opposing(unit.side()));
     if (king == null) {
       throw new UnsupportedOperationException(
           row.name() + " pushes with no king facing " + unit.name() + ", not modelled");
@@ -253,20 +220,13 @@ final class UppercutRun extends ActionInstance {
     return ran;
   }
 
-  /** The squared distance from the point to a tower, in 32 bits, read without sign. */
-  private static long squared(int tx, int ty, WorldEntity tower) {
-    int dx = tx - tower.getView().getX();
-    int dy = ty - tower.getView().getY();
-    return Integer.toUnsignedLong(dx * dx + dy * dy);
-  }
-
   /**
    * Keeps a tower as the nearest when its squared distance is below the best, compared unsigned.
    */
   private void nearer(int tx, int ty, WorldEntity tower) {
     int dx = tx - tower.getView().getX();
     int dy = ty - tower.getView().getY();
-    long squared = squared(tx, ty, tower);
+    long squared = Integer.toUnsignedLong(dx * dx + dy * dy);
     if (best > squared) {
       best = squared;
       vx = dx;

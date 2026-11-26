@@ -17,17 +17,17 @@ import org.crforge.core.fidelity.FidelityStatus;
  * teleport does.
  *
  * <p>The instant warp: the destination is the unit's position plus the offset, both axes negated
- * for side 1 (in a team battle for team 1, sides 1 and 3), so a negative length offset carries
- * either side's unit back toward its own king; it is clamped into the arena. A landing cell that is
- * water, or that is the blocked value alone, is replaced by the nearest allowed cell of the same
- * column within four rows, the nearer half-row neighbour tried first at each distance, at that
- * cell's centre; with none, the starting row's centre. The unit is placed there in one write. Then
- * its pending damage is reset, its route emptied and its reference dropped; the two effects only
- * show something. It has no run: it is done as it starts. The reset, the flying warp's start's
- * alike and the same as entering a pathfinding state, makes every projectile aimed at the unit lose
- * it as its target, handing nothing back: each flies on to its aim, where the unit stood for it
- * before the warp, and lands on nothing. A projectile whose row keeps its target through the reset
- * (the Royal Chef's pancake) keeps the unit, follows it to where the warp takes it and lands on it.
+ * for side 1, so a negative length offset carries either side's unit back toward its own king; it
+ * is clamped into the arena. A landing cell that is water, or that is the blocked value alone, is
+ * replaced by the nearest allowed cell of the same column within four rows, the nearer half-row
+ * neighbour tried first at each distance, at that cell's centre; with none, the starting row's
+ * centre. The unit is placed there in one write. Then its pending damage is reset, its route
+ * emptied and its reference dropped; the two effects only show something. It has no run: it is done
+ * as it starts. The reset, the flying warp's start's alike and the same as entering a pathfinding
+ * state, makes every projectile aimed at the unit lose it as its target, handing nothing back: each
+ * flies on to its aim, where the unit stood for it before the warp, and lands on nothing. A
+ * projectile whose row keeps its target through the reset (the Royal Chef's pancake) keeps the
+ * unit, follows it to where the warp takes it and lands on it.
  *
  * <p>The flying warp ({@link #getFlight()} not null, mode InjectedCharacter with a speed) is not
  * started by the runner: the Mega Minion hero's hand-over builds its run with the target it took
@@ -45,9 +45,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: the offset by the side (by team in a team battle, held by"
-            + " tvt2_warp_elitearcher_s2 / _s3 and tvt2_warp_darkprince_s2 / _s3), the clamp, the"
-            + " vertical search off water"
+        "Settled line for line: the offset by the side, the clamp, the vertical search off water"
             + " and blocked cells, the single position write, the pending damage reset, the route"
             + " and reference cleared, the projectiles aimed at the unit dropped. Held by the"
             + " reference battles ability_boss_bandit and card_BossBandit_until_stop and, for the"

@@ -374,11 +374,6 @@ public class ProjectileEntity extends BattleEntity
     return castId;
   }
 
-  @Override
-  public boolean inTeamBattle() {
-    return world.teamBattle();
-  }
-
   /** The projectile's name in logs, refusals and the visualizer: its kind's prefix and its id. */
   public String name() {
     return "proj_" + getId();

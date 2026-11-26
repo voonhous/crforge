@@ -908,14 +908,14 @@ public final class CharacterSpawns {
   private static final int WARP_SEARCH_ROWS = 4;
 
   /**
-   * A warp's perform: the unit's position plus the offset, negated for a unit not of team 0 (side
-   * 1, and side 3 of a team battle), clamped into the arena; a landing cell the row avoids replaced
-   * by the nearest allowed cell of its column within four rows, the nearer half-row neighbour first
-   * at each distance, at that cell's centre, or by the landing row's centre when none is allowed;
-   * the position written once; then the pending damage reset, the route emptied and the reference
-   * dropped, as the row asks. The reset drops the unit as the target of every projectile aimed at
-   * it, as entering a pathfinding state does; one whose row keeps its target through it keeps the
-   * unit (see {@link #resetPendingDamageAtWarp(CharacterEntity, String)}).
+   * A warp's perform: the unit's position plus the offset, negated for side 1, clamped into the
+   * arena; a landing cell the row avoids replaced by the nearest allowed cell of its column within
+   * four rows, the nearer half-row neighbour first at each distance, at that cell's centre, or by
+   * the landing row's centre when none is allowed; the position written once; then the pending
+   * damage reset, the route emptied and the reference dropped, as the row asks. The reset drops the
+   * unit as the target of every projectile aimed at it, as entering a pathfinding state does; one
+   * whose row keeps its target through it keeps the unit (see {@link
+   * #resetPendingDamageAtWarp(CharacterEntity, String)}).
    *
    * @param unit the unit
    * @param action the row
@@ -926,8 +926,8 @@ public final class CharacterSpawns {
     GridEntity view = unit.getView();
     int startX = view.getX();
     int startY = view.getY();
-    // Mirrored by team: side 2 warps as side 0, side 3 as side 1.
-    int sign = BattleWorld.team(unit.side()) == 0 ? 1 : -1;
+    world.refuseInTeamBattle(unit.name() + "'s warp, mirrored by its side,");
+    int sign = unit.side() == 0 ? 1 : -1;
     int x = columns.warpX() * sign + startX;
     int y = columns.warpY() * sign + startY;
     int maxX = world.getGrid().getWidth() * TileMap.CELL_UNITS - 1;

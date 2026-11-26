@@ -1842,11 +1842,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return castId;
   }
 
-  @Override
-  public boolean inTeamBattle() {
-    return world.teamBattle();
-  }
-
   /** The entity's unique name within the battle, as logs, refusals and the visualizer name it. */
   public String name() {
     return view.getName();
