@@ -259,12 +259,32 @@ public final class ReplayScenario {
    * a draft, a pick and predefined decks); the icon, the text id and whether trophies are shown,
    * which are presentation; and whether it is a challenge mode, which is matchmaking. The game
    * reads tps only to ask whether it is 0, so 2 plays as Ladder's 1.
+   *
+   * <p>Showdown_Friendly, the classic 1v1 battle of an event: its battles are written under an
+   * event with game mode type {@value ReplayFormat#EVENT_GAME_MODE_TYPE}, level cap 0 and tps 0.
+   * Its row differs from the Ladder row in the card level adjustment, {@value #FRIENDLY}, and in
+   * columns the battle reads nothing of: the icon, the three text ids and whether trophies are
+   * shown, which are presentation; and whether it is a challenge mode, which is matchmaking. Its
+   * deck selection is the Ladder row's. A tps of 0 is the one value the game tells apart: with it
+   * the players' scores stay as they are when the battle ends, where any other value changes them
+   * by the result. No rule of the battle reads a score, so the recorded battles play the same step
+   * for step at tps 0, 1 and 2.
    */
   private static final Map<String, EventMode> PLAYED_UNDER_AN_EVENT =
       Map.of(
           "Challenge_AllCards_EventDeck_NoSet",
           new EventMode(
-              "2", Set.of(DECK_SELECTION, "Icon", "TID", "ShowTrophies", "ValidChallengeMode")));
+              "2", Set.of(DECK_SELECTION, "Icon", "TID", "ShowTrophies", "ValidChallengeMode")),
+          "Showdown_Friendly",
+          new EventMode(
+              "0",
+              Set.of(
+                  "ClanWarDescription",
+                  "DescriptionTID",
+                  "Icon",
+                  "TID",
+                  "ShowTrophies",
+                  "ValidChallengeMode")));
 
   /**
    * How a Ladder battle's event block is read: the game reads an event's category and settings only
@@ -1016,7 +1036,7 @@ public final class ReplayScenario {
             + " or a mode played as it: "
             + String.join(", ", PLAYED_AS_LADDER.keySet())
             + ", each pinning gmt, lvlcap and trail to its own values, or under an event "
-            + String.join(", ", PLAYED_UNDER_AN_EVENT.keySet())
+            + String.join(", ", new TreeSet<>(PLAYED_UNDER_AN_EVENT.keySet()))
             + ", each pinning tps to its own value");
     if (mode.name().equals(LadderMatch.GAME_MODE)) {
       return LADDER_HEADER;
