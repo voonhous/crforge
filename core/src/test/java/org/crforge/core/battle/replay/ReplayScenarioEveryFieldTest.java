@@ -828,6 +828,114 @@ class ReplayScenarioEveryFieldTest {
             "the game mode " + CHALLENGE + ", whose TripleElixir differs from the Ladder row's");
   }
 
+  /** The classic 1v1 game mode of an event, played under it at the Friendly adjustment. */
+  private static final String SHOWDOWN = "Showdown_Friendly";
+
+  /**
+   * The knight replay as a battle of the Showdown_Friendly mode, as its replays write it: under an
+   * event, the mode's row, tps 0, each deck card at its rarity's tournament level index and the
+   * plays' items fitted to it.
+   */
+  private static ObjectNode showdown(ObjectNode scenario) {
+    underAnEvent(scenario);
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("gamemode", 72_000_000 + tables.table("game_modes").row(SHOWDOWN).index());
+    battle.put("tps", 0);
+    for (int side = 0; side < 2; side++) {
+      for (JsonNode entry : battle.path("deck" + side).path("sp")) {
+        GameRow card = ScenarioItems.row(tables, entry.path("d").asInt());
+        GameRow rarity = tables.table("rarities").row(card.string("Rarity"));
+        ((ObjectNode) entry).put("l", rarity.intValue("TournamentLevelIndex"));
+      }
+    }
+    return fit(scenario);
+  }
+
+  @Test
+  void readsAShowdownFriendlyBattleAtTheFriendlyLevelsWithTpsZero() {
+    assumeLadderEventsRead();
+    ObjectNode scenario = showdown(Scenarios.knightWithEveryField());
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    // Levels the game reads none of under the Friendly adjustment.
+    for (int side = 0; side < 2; side++) {
+      ((ObjectNode) battle.path("hbd").get(side)).put("kt", 1);
+      ((ObjectNode) battle.path("deck" + side).path("sc").get(0)).put("l", 0);
+    }
+    ReplayScenario mapping = new ReplayScenario(tables);
+
+    assertThat(mapping.survey(scenario)).isEmpty();
+    ScenarioPlan plan = mapping.translate(scenario);
+
+    int level = friendlyLevel();
+    for (int side = 0; side < 2; side++) {
+      Standard1v1Battle.Towers towers = plan.towers().get(side);
+      assertThat(towers.kingLevel()).isEqualTo(level);
+      assertThat(towers.level()).isEqualTo(level);
+      List<String> deck = plan.decks().get(side);
+      int[] levels = plan.deckLevels().get(side);
+      for (int i = 0; i < deck.size(); i++) {
+        assertThat(levels[i]).isEqualTo(tournamentLevel(ScenarioItems.card(tables, deck.get(i))));
+      }
+    }
+    assertThat(mapping.mapping())
+        .containsEntry("gmt", "pinned: 16")
+        .containsEntry("tps", "pinned: 0")
+        .containsEntry("cardlvlmin", "pinned: 0")
+        .containsEntry("battle.hbd[i].kt", ReplayScenario.TOWER_LEVEL_UNDER_FRIENDLY);
+  }
+
+  @Test
+  void refusesAShowdownFriendlyBattleWithoutAnEventOrAtAnotherTps() {
+    assumeLadderEventsRead();
+    ObjectNode noEvent = showdown(Scenarios.knightWithEveryField());
+    ObjectNode battle = (ObjectNode) noEvent.path("battle");
+    battle.remove("event");
+    battle.put("gmt", 1);
+    battle.put("te", -1);
+    battle.put("trail", 170_000_000);
+    assertThat(new ReplayScenario(tables).survey(noEvent))
+        .extracting(ReplayScenario.Refusal::feature)
+        .anySatisfy(feature -> assertThat(feature).contains(SHOWDOWN + " without an event"));
+
+    // The mode's replays write tps 0: another value is not what the mode is established on.
+    for (int tps : new int[] {1, 2}) {
+      ObjectNode scenario = showdown(Scenarios.knightWithEveryField());
+      ((ObjectNode) scenario.path("battle")).put("tps", tps);
+      assertThat(new ReplayScenario(tables).survey(scenario))
+          .extracting(ReplayScenario.Refusal::input)
+          .containsExactly("tps=" + tps);
+    }
+  }
+
+  @Test
+  void refusesAChallengeAtTheTpsOfAShowdownFriendlyBattle() {
+    assumeLadderEventsRead();
+    // Each mode is pinned to its own tps: the challenge's 2 is not replaced by the other mode's 0.
+    ObjectNode scenario = challenge(Scenarios.knightWithEveryField());
+    ((ObjectNode) scenario.path("battle")).put("tps", 0);
+
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .extracting(ReplayScenario.Refusal::input)
+        .containsExactly("tps=0");
+  }
+
+  @Test
+  void refusesAShowdownFriendlyRowThatDiffersFromTheLadderRowInABattleColumn(@TempDir Path folder)
+      throws IOException {
+    assumeLadderEventsRead();
+    GameTables altered =
+        GameData.altered(
+            folder,
+            "game_modes",
+            rows -> ((ObjectNode) rows.path(SHOWDOWN).path("columns")).put("TripleElixir", true));
+    ObjectNode scenario = showdown(Scenarios.knightWithEveryField());
+
+    assertThat(new ReplayScenario(altered).survey(scenario))
+        .extracting(ReplayScenario.Refusal::feature)
+        .containsExactly(
+            "the game mode " + SHOWDOWN + ", whose TripleElixir differs from the Ladder row's");
+  }
+
   @Test
   void readsACaseGeneratedForTheVersionByTheFieldsOfItsGeneratedCases() {
     assumeGeneratedCasesEstablished();

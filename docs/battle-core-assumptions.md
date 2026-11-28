@@ -598,6 +598,13 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   Its replays write game mode type 16, level cap 0, tps 2 and the event's trail and id, and `seb` true. The game reads tps only to ask whether it is 0, and `seb` only to write the header out again.
 
+- A battle of the game mode Showdown_Friendly, the classic 1v1 battle of an event, is played as a Ladder match under its event (client 16.635.13). Its game mode row differs from the Ladder row in the card level adjustment (Friendly) and in columns the battle reads nothing of, which the replay mapping checks the tables still say:
+
+  - the icon, the three text ids and whether trophies are shown, presentation
+  - whether it is a challenge mode, matchmaking
+
+  Its replays write game mode type 16, level cap 0, tps 0 and the event's trail and id. With a tps of 0 the game leaves the players' scores as they are when the battle ends, where any other value changes them by the result; it also reads tps to draw the end of the battle. No rule of the battle reads a score: the mode's recorded battles play the same step for step at tps 0, 1 and 2. Each mode stays pinned to the tps its own replays write.
+
   Under the Friendly card level adjustment the game sets every level itself, whatever levels the replay writes. Each side's king and towers, princesses or a tower card alike, stand at the SummonerLevel of the exp level the global TOURNAMENT_MAX_EXP_LEVEL names, and each deck card at its rarity's TournamentLevelIndex (plus its RelativeLevel, plus 1). In the recordings, changing the replay's king levels, tower selection levels or deck card levels leaves the battle unchanged, and the same battle under the Ladder row puts the kings back at their own levels. A card level minimum other than 0 stays unsupported, as does a challenge without an event or under another card level adjustment.
 
 - A unit takes its row's TargetOnlyTroops into the validator, which passes over a building, and its IgnoreTargetsWithBuff and DeprioritizeTargetsWithBuff into the validator and the selector's priority.

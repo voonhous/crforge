@@ -351,6 +351,8 @@ A challenge (game mode Challenge_AllCards_EventDeck_NoSet) is read the same way 
 - each deck card stands at its rarity's `TournamentLevelIndex`
 - the card level minimum is pinned to 0
 
+A battle of the game mode Showdown_Friendly, the classic 1v1 battle of an event, is read the same way under its event, with `tps` 0 pinned. Its row differs from the Ladder row in the card level adjustment (`Friendly`) and in presentation and matchmaking columns only; its deck selection is the Ladder row's. A `tps` of 0 is the one value the game tells apart: the players' scores then stay as they are when the battle ends, and no rule of the battle reads a score.
+
 The header switch `seb`, true in a challenge's replays, is carried in client 16.635.1's replays: the game never reads it in a battle. See [the battle core's known assumptions](battle-core-assumptions.md).
 
 A case generated for a data version of client 16.635.1 is read as one of client 16.402.17 is: by 14.593.1's fields, with the version's command types. The fields 16.402.18's replays add change nothing such a case plays: its recorded battles on 16.635.3 play the same with the request lists empty, the switches `cardlvlmin` 0, `rrb` and `seb` false and a king level of 1 for each side added.
@@ -485,5 +487,5 @@ Workspace buttons and keyboard bindings dispatch `WorkspaceAction` commands to t
 
 ## Known Gaps
 
-- **One mode.** The battle core plays a Ladder 1v1 match on the standard arena (`LadderMatch`, the one `BattleMode`); a Path of Legends replay (Ranked1v1_NewArena or Ranked1v1_NewArena2), a Ladder battle under an event and a challenge (Challenge_AllCards_EventDeck_NoSet, under its event) are played as one, each header pinned to the values its replays write. 2v2, the other game modes and event maps are not modelled.
+- **One mode.** The battle core plays a Ladder 1v1 match on the standard arena (`LadderMatch`, the one `BattleMode`); a Path of Legends replay (Ranked1v1_NewArena or Ranked1v1_NewArena2), a Ladder battle under an event, a challenge (Challenge_AllCards_EventDeck_NoSet, under its event) and a classic 1v1 battle of an event (Showdown_Friendly, under its event) are played as one, each header pinned to the values its replays write. 2v2, the other game modes and event maps are not modelled.
 - **What is not modelled yet is refused, never guessed.** A row, column, action class or replay field the battle core does not model refuses the battle, with the reason. What is covered and what is still partial are listed in [The Battle Core](battle-core.md), and the assumptions carried in [Battle Core Assumptions](battle-core-assumptions.md); `./gradlew :core:fidelityReport` reports each class's fidelity status and note.
